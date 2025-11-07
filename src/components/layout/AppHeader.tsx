@@ -43,7 +43,7 @@ export function AppHeader() {
   };
 
   const menuItems = [
-    { title: "Navegador", url: "/", icon: BookOpen },
+    { title: "Navegador", url: "/navegador", icon: BookOpen },
     { title: "Editor", url: "/editor", icon: Calendar },
     { title: "Administrador", url: "/entidades", icon: Tag, adminOnly: true },
   ];

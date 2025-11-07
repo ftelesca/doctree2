@@ -28,7 +28,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (!loading && user) {
-      navigate("/");
+      navigate("/navegador");
     }
   }, [user, loading, navigate]);
 

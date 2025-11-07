@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LastFolderProvider } from "./contexts/LastFolderContext";
 import { MainLayout } from "./components/layout/MainLayout";
+import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Perfil from "./pages/Perfil";
@@ -30,10 +31,28 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <MainLayout>{children}</MainLayout>;
+};
+
+const AuthenticatedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/navegador" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 const App = () => (
@@ -46,13 +65,28 @@ const App = () => (
               <Toaster />
               <Sonner />
               <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route
-                path="/"
+              <Route 
+                path="/" 
                 element={
-              <ProtectedRoute>
-                <Navegador />
-              </ProtectedRoute>
+                  <AuthenticatedRoute>
+                    <Landing />
+                  </AuthenticatedRoute>
+                } 
+              />
+              <Route 
+                path="/auth" 
+                element={
+                  <AuthenticatedRoute>
+                    <Auth />
+                  </AuthenticatedRoute>
+                } 
+              />
+              <Route
+                path="/navegador"
+                element={
+                  <ProtectedRoute>
+                    <Navegador />
+                  </ProtectedRoute>
                 }
               />
               <Route
