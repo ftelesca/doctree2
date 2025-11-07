@@ -199,15 +199,7 @@ export type Database = {
           updated_at?: string | null
           usuario_criador_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "doc_queue_pasta_id_fkey"
-            columns: ["pasta_id"]
-            isOneToOne: false
-            referencedRelation: "folder"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       entity: {
         Row: {
@@ -254,34 +246,46 @@ export type Database = {
         Row: {
           created_at: string | null
           descricao: string
+          extraction_method: string
           icone: string | null
           id: string
           nome: string
           nome_ident_1: string | null
           nome_ident_2: string | null
           prompt: string
+          regex_pattern: string | null
+          requires_validation: boolean | null
+          spacy_label: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           descricao: string
+          extraction_method?: string
           icone?: string | null
           id?: string
           nome: string
           nome_ident_1?: string | null
           nome_ident_2?: string | null
           prompt: string
+          regex_pattern?: string | null
+          requires_validation?: boolean | null
+          spacy_label?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           descricao?: string
+          extraction_method?: string
           icone?: string | null
           id?: string
           nome?: string
           nome_ident_1?: string | null
           nome_ident_2?: string | null
           prompt?: string
+          regex_pattern?: string | null
+          requires_validation?: boolean | null
+          spacy_label?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -335,15 +339,7 @@ export type Database = {
           nome?: string
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_last_folder_fkey"
-            columns: ["last_folder"]
-            isOneToOne: false
-            referencedRelation: "folder"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_roles: {
         Row: {
