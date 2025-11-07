@@ -1,73 +1,25 @@
-# Welcome to your Lovable project
 
-## Project info
+# Sobre o DocTree
 
-**URL**: https://lovable.dev/projects/b4fbf285-f177-4e24-8171-1e6ab1482739
+Plataforma inteligente de gestão documental com análise por IA e estruturação automatizada de relacionamentos
 
-## How can I edit this code?
+## Armazenamento Universal de Documentos
+Armazene e analise documentos de todos os tipos: Contratos, Atas, Processos, Extratos, Certidões, Escrituras e muito mais. Sistema compatível com PDF, documentos escaneados (OCR) e múltiplos formatos, organizados de forma inteligente e segura.
 
-There are several ways of editing your application.
+# Extração Inteligente de Entidades Configuráveis
+IA avançada processa automaticamente seus documentos identificando e extraindo entidades personalizadas conforme sua necessidade: Organizações, Pessoas, Imóveis, Veículos, Contas Bancárias e outros tipos de entidades relevantes para seu negócio. Sistema totalmente configurável pelo usuário.
 
-**Use Lovable**
+# Estrutura de Relacionamentos Automatizada
+O sistema cria automaticamente uma rede de relacionamentos entre documentos, pastas temáticas e entidades, permitindo navegação intuitiva e descoberta de conexões. Visualize como pessoas, organizações e ativos se relacionam através dos documentos processados.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b4fbf285-f177-4e24-8171-1e6ab1482739) and start prompting.
+# Organização por Pastas Temáticas
+Agrupe documentos em pastas temáticas personalizadas para organizar processos, projetos ou assuntos específicos. Acesse rapidamente toda a documentação relacionada a um tema, com visualização completa das análises e entidades associadas.
 
-Changes made via Lovable will be committed automatically to this repo.
+# Busca Avançada e Navegação Inteligente
+Sistema de busca e filtragem avançada permite localizar rapidamente documentos, entidades e relacionamentos. Navegue pela estrutura completa com filtros por tipo de entidade, período, pasta ou qualquer atributo extraído pela IA.
 
-**Use your preferred IDE**
+# Conciliação e Auditoria
+Ferramentas de conciliação automatizada identificam inconsistências, duplicidades e relacionamentos entre documentos e entidades. Rastreie a origem de cada informação com auditoria completa do processamento.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/b4fbf285-f177-4e24-8171-1e6ab1482739) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+# Segurança e Controle de Acesso
+Segurança em múltiplas camadas com controle de acesso por organização, criptografia de dados sensíveis e rastreamento completo de todas as operações. Cada usuário acessa apenas os documentos e informações autorizadas para sua organização.

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>DocTree icon</title>
+  <desc>Document with tree icon in green</desc>
+  
+  <!-- Document shape with folded corner -->
+  <path d="M96 32C78.3269 32 64 46.3269 64 64V448C64 465.673 78.3269 480 96 480H416C433.673 480 448 465.673 448 448V144L352 32H96Z" fill="#3F9F6F"/>
+  
+  <!-- Folded corner -->
+  <path d="M352 32V128C352 136.837 359.163 144 368 144H448L352 32Z" fill="#2D7A54"/>
+  
+  <!-- White circle in center -->
+  <circle cx="256" cy="280" r="100" fill="white"/>
+  
+  <!-- Tree symbol inside circle - simple and clean -->
+  <g stroke="#3F9F6F" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Main trunk -->
+    <line x1="256" y1="230" x2="256" y2="330"/>
+    
+    <!-- Bottom left branch -->
+    <line x1="256" y1="310" x2="220" y2="280"/>
+    
+    <!-- Bottom right branch -->
+    <line x1="256" y1="310" x2="292" y2="280"/>
+    
+    <!-- Middle left branch -->
+    <line x1="256" y1="275" x2="230" y2="255"/>
+    
+    <!-- Middle right branch -->
+    <line x1="256" y1="275" x2="282" y2="255"/>
+    
+    <!-- Top branch -->
+    <line x1="256" y1="240" x2="240" y2="230"/>
+    <line x1="256" y1="240" x2="272" y2="230"/>
+  </g>
+</svg>
