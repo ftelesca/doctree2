@@ -54,7 +54,7 @@ export function ProfileForm({ onClose }: ProfileFormProps) {
       {/* Avatar Section */}
       <div className="flex flex-col items-center space-y-4">
         <Avatar className="h-20 w-20">
-          <AvatarImage src={profile?.foto_url} alt={nome} />
+          <AvatarImage src={profile?.avatar_url} alt={nome} />
           <AvatarFallback className="bg-primary/10 text-primary font-medium text-lg">{getInitials(nome)}</AvatarFallback>
         </Avatar>
         <div className="text-center">

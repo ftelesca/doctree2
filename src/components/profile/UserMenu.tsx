@@ -37,7 +37,7 @@ export function UserMenu() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="flex items-center gap-2 h-auto p-2 hover:bg-accent/50 transition-colors">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={profile?.foto_url || ""} alt={displayName} />
+              <AvatarImage src={profile?.avatar_url || ""} alt={displayName} />
               <AvatarFallback className="bg-primary/10 text-primary font-medium">{getInitials(displayName)}</AvatarFallback>
             </Avatar>
             <div className="hidden md:flex flex-col items-start">

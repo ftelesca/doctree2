@@ -7,7 +7,7 @@ import { toast } from "sonner";
 interface Profile {
   id: string;
   nome?: string;
-  foto_url?: string;
+  avatar_url?: string;
   last_folder?: string;
   organizacoes?: { nome: string };
   created_at: string;
@@ -65,13 +65,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               
               // Se fez login com Google e tem avatar_url, atualizar o perfil
               const googleAvatarUrl = session.user.user_metadata?.avatar_url;
-              if (googleAvatarUrl && profileData && profileData.foto_url !== googleAvatarUrl) {
+              if (googleAvatarUrl && profileData && profileData.avatar_url !== googleAvatarUrl) {
                 await supabase
                   .from("profiles")
-                  .update({ foto_url: googleAvatarUrl })
+                  .update({ avatar_url: googleAvatarUrl })
                   .eq("id", session.user.id);
-                
-                setProfile({ ...profileData, foto_url: googleAvatarUrl });
+
+                setProfile({ ...profileData, avatar_url: googleAvatarUrl });
               } else {
                 setProfile(profileData);
               }
