@@ -1,4 +1,4 @@
 {
-  // Força o Git no VS Code a usar a chave SSH do Codespace
-  "git.sshCommand": "ssh -i ~/.ssh/id_ed25519_codespace -o IdentitiesOnly=yes"
+  // Força o Git no VS Code a usar a chave SSH do Codespace (usar caminho absoluto evita problemas de expansão)
+  "git.sshCommand": "ssh -i /home/codespace/.ssh/id_ed25519_codespace -o IdentitiesOnly=yes"
 }
