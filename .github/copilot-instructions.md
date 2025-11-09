@@ -48,8 +48,3 @@ Objetivo: fornecer contexto prático para agentes de codificação acelerarem ta
   - Muitos arquivos apresentam regras de lint/TypeScript (usa `@types/react` e `typescript`); rodar `npm ci` antes de compilar.
   - Mensagens de AI e prompts são sensíveis: não modifique o sistema prompt sem revisar testes de extração.
 
-- Clipboard / Codespaces (terminal)
-  - Ajudas úteis: adicionamos suporte OSC52 ao ambiente (`osc52_copy` disponível em `~/.bashrc`) para copiar do terminal para o clipboard do host quando o terminal/cliente suportar.
-  - Note: leitura direta do clipboard pelo navegador requer permissão do site. Se você precisar colar do host para o terminal, permita a permissão de clipboard no navegador (cadeado → Site settings → Clipboard → Allow) ou cole manualmente em um arquivo no editor e use `cat arquivo | comando`.
-  - Se o OSC52 não funcionar no web terminal, use a alternativa: cole no editor (novo arquivo) e processe via terminal (ex.: `cat clip.txt | comando`).
-
