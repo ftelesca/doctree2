@@ -1,19 +1,9 @@
-import { Moon, Sun, LogOut, User, Info, FileText, Upload, BarChart3, Shield } from "lucide-react";
+import { Info, FileText, Upload, BarChart3, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { NavLink } from "react-router-dom";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "next-themes";
-import { Building2, Home, Users, Calendar, BookOpen, Tag } from "lucide-react";
+import { BookOpen, Calendar, Tag } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,22 +15,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import docTreeIcon from "@/assets/doctree-icon.svg";
+import { UserMenu as UserMenuComponent } from "@/components/profile/UserMenu";
 
 export function AppHeader() {
-  const { user, profile, signOut } = useAuth();
-  const { theme, setTheme } = useTheme();
   const { isAdmin } = useIsAdmin();
-  const navigate = useNavigate();
   const [aboutOpen, setAboutOpen] = useState(false);
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
-  };
 
   const menuItems = [
     { title: "Navegador", url: "/navegador", icon: BookOpen },
@@ -195,47 +174,7 @@ export function AppHeader() {
         </Dialog>
       </nav>
 
-      <div className="flex items-center">
-        <DropdownMenu>
-          <DropdownMenuTrigger className="outline-none">
-            <div className="flex items-center gap-3 hover:bg-muted rounded-lg p-2 transition-colors">
-              <Avatar className="h-9 w-9">
-                <AvatarImage src={profile?.foto_url} alt={profile?.nome} />
-                <AvatarFallback>{profile?.nome ? getInitials(profile.nome) : "?"}</AvatarFallback>
-              </Avatar>
-              <div className="text-left hidden lg:block">
-                <p className="text-sm font-medium">{profile?.nome || user?.email}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-              </div>
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem
-              onClick={() => navigate("/perfil")}
-              className="data-[highlighted]:bg-muted data-[highlighted]:text-foreground focus:bg-muted focus:text-foreground"
-            >
-              <User className="mr-2 h-4 w-4" />
-              <span>Minha Conta</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="data-[highlighted]:bg-muted data-[highlighted]:text-foreground focus:bg-muted focus:text-foreground"
-            >
-              {theme === "dark" ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-              <span>Alternar tema</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={signOut}
-              className="text-destructive data-[highlighted]:bg-muted data-[highlighted]:text-foreground focus:bg-muted focus:text-foreground"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Sair</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <UserMenuComponent />
     </header>
   );
 }

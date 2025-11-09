@@ -16,6 +16,7 @@ import Documentos from "./pages/Documentos";
 import Navegador from "./pages/Navegador";
 import Entidades from "./pages/Entidades";
 import Admin from "./pages/Admin";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,14 @@ const App = () => (
                 element={
                   <AuthenticatedRoute>
                     <Auth />
+                  </AuthenticatedRoute>
+                } 
+              />
+              <Route 
+                path="/reset-password" 
+                element={
+                  <AuthenticatedRoute>
+                    <ResetPasswordPage />
                   </AuthenticatedRoute>
                 } 
               />

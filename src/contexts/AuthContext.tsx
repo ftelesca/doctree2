@@ -4,16 +4,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+interface Profile {
+  id: string;
+  nome?: string;
+  foto_url?: string;
+  last_folder?: string;
+  organizacoes?: { nome: string };
+  created_at: string;
+  updated_at: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  profile: any | null;
+  profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,40 +41,47 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        setLoading(false);
         
         if (session?.user) {
-          // Fetch profile after state update
-          setTimeout(async () => {
-            const { data: profileData } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", session.user.id)
-              .maybeSingle();
-            
-            // Se fez login com Google e tem avatar_url, atualizar o perfil
-            const googleAvatarUrl = session.user.user_metadata?.avatar_url;
-            if (googleAvatarUrl && profileData && profileData.foto_url !== googleAvatarUrl) {
-              await supabase
+          // Fetch profile asynchronously without blocking
+          const fetchProfile = async () => {
+            try {
+              const { data: profileData } = await supabase
                 .from("profiles")
-                .update({ foto_url: googleAvatarUrl })
-                .eq("id", session.user.id);
+                .select("*")
+                .eq("id", session.user.id)
+                .maybeSingle();
               
-              // Atualizar o estado local com a nova foto
-              setProfile({ ...profileData, foto_url: googleAvatarUrl });
-            } else {
-              setProfile(profileData);
+              // Se fez login com Google e tem avatar_url, atualizar o perfil
+              const googleAvatarUrl = session.user.user_metadata?.avatar_url;
+              if (googleAvatarUrl && profileData && profileData.foto_url !== googleAvatarUrl) {
+                await supabase
+                  .from("profiles")
+                  .update({ foto_url: googleAvatarUrl })
+                  .eq("id", session.user.id);
+                
+                setProfile({ ...profileData, foto_url: googleAvatarUrl });
+              } else {
+                setProfile(profileData);
+              }
+            } catch (err) {
+              console.error("Profile fetch error:", err);
+              setProfile(null);
             }
-          }, 0);
+          };
+          
+          fetchProfile();
         } else {
           setProfile(null);
         }
@@ -71,36 +90,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        setTimeout(async () => {
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", session.user.id)
-            .maybeSingle();
-          
-          // Se fez login com Google e tem avatar_url, atualizar o perfil
-          const googleAvatarUrl = session.user.user_metadata?.avatar_url;
-          if (googleAvatarUrl && profileData && profileData.foto_url !== googleAvatarUrl) {
-            await supabase
-              .from("profiles")
-              .update({ foto_url: googleAvatarUrl })
-              .eq("id", session.user.id);
-            
-            // Atualizar o estado local com a nova foto
-            setProfile({ ...profileData, foto_url: googleAvatarUrl });
-          } else {
-            setProfile(profileData);
-          }
-          
-          setLoading(false);
-        }, 0);
-      } else {
+      if (!session) {
         setLoading(false);
       }
+      // onAuthStateChange will handle the session if it exists
     });
 
     return () => subscription.unsubscribe();
@@ -201,6 +194,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+      toast.success("Email enviado! Verifique sua caixa de entrada para redefinir sua senha.");
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao enviar email de recuperação");
+      throw error;
+    }
+  };
+
+  const updateProfile = async (updates: Partial<Profile>) => {
+    if (!user) throw new Error("Usuário não autenticado");
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      // Fetch updated profile
+      const { data: profileData, error: fetchError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      setProfile(profileData);
+      toast.success("Perfil atualizado com sucesso!");
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar perfil");
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -213,6 +248,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         signInWithGoogle,
         signOut,
         resendVerificationEmail,
+        resetPassword,
+        updateProfile,
       }}
     >
       {children}
