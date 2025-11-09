@@ -47,4 +47,3 @@ Objetivo: fornecer contexto prático para agentes de codificação acelerarem ta
   - Funções Deno esperam variáveis de ambiente — falhas sem mensagens claras podem vir de `OPENAI_API_KEY` faltando.
   - Muitos arquivos apresentam regras de lint/TypeScript (usa `@types/react` e `typescript`); rodar `npm ci` antes de compilar.
   - Mensagens de AI e prompts são sensíveis: não modifique o sistema prompt sem revisar testes de extração.
-
