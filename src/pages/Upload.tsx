@@ -315,9 +315,12 @@ const Upload = () => {
     desc.setAttribute("content", "Importe e analise documentos automaticamente com IA no DocTree.");
     if (!desc.parentNode) document.head.appendChild(desc);
 
-    loadPastas();
-    setPastaLoaded(true);
-  }, []);
+    // Só carregar pastas se o usuário estiver autenticado
+    if (user) {
+      loadPastas();
+      setPastaLoaded(true);
+    }
+  }, [user]);
 
   // Carregar last_folder do contexto e definir como default
   useEffect(() => {
@@ -343,17 +346,36 @@ const Upload = () => {
   }, [uploading]);
 
   const loadPastas = async () => {
-    const { data, error } = await supabase
-      .from("folder")
-      .select("id, descricao")
-      .order("descricao", { ascending: true });
-
-    if (error) {
-      console.error("Error loading pastas:", error);
+    if (!user) {
+      console.error("Usuário não autenticado");
       return;
     }
 
-    setPastas(data || []);
+    try {
+      const { data, error } = await supabase
+        .from("folder")
+        .select("id, descricao")
+        .order("descricao", { ascending: true });
+
+      if (error) {
+        console.error("Error loading pastas:", error);
+        toast({
+          title: "Erro ao carregar pastas",
+          description: error.message || "Erro de permissão de acesso (RLS)",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setPastas(data || []);
+    } catch (err) {
+      console.error("Erro inesperado ao carregar pastas:", err);
+      toast({
+        title: "Erro inesperado",
+        description: "Falha na comunicação com o banco de dados",
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePastaChange = (pastaId: string) => {
@@ -379,13 +401,20 @@ const Upload = () => {
     }
 
     try {
+      if (!user?.id) {
+        throw new Error("Usuário não autenticado");
+      }
+
       const { data, error } = await supabase
         .from("folder")
         .insert({ descricao: novaPastaDescricao.trim(), usuario_criador_id: user.id })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("RLS Error ao criar pasta:", error);
+        throw new Error(`Erro de permissão: ${error.message}`);
+      }
 
       toast({
         title: "Pasta criada",
@@ -396,7 +425,7 @@ const Upload = () => {
       setNovaPastaDescricao("");
       setNovaPastaDialogOpen(false);
       loadPastas();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao criar pasta:", error);
       toast({
         title: "Erro",
@@ -536,7 +565,9 @@ const Upload = () => {
     fileDate: string,
     pastaId: string,
   ) => {
-    if (!user) return;
+    if (!user?.id) {
+      throw new Error("Usuário não autenticado para adicionar à fila");
+    }
 
     const { error } = await supabase.from("doc_queue").insert({
       usuario_criador_id: user.id,
@@ -551,7 +582,10 @@ const Upload = () => {
       file_date: fileDate,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("RLS Error ao adicionar à fila:", error);
+      throw new Error(`Erro de permissão ao adicionar à fila: ${error.message}`);
+    }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -631,9 +665,10 @@ const Upload = () => {
           .maybeSingle();
 
         if (checkError) {
+          console.error("RLS Error ao verificar duplicatas:", checkError);
           toast({
-            title: "Erro",
-            description: `${file.name}: ${checkError.message}`,
+            title: "Erro de permissão",
+            description: `${file.name}: Erro ao verificar duplicatas - ${checkError.message}`,
             variant: "destructive",
           });
           continue;
@@ -651,9 +686,10 @@ const Upload = () => {
             .maybeSingle();
 
           if (docError) {
+            console.error("RLS Error ao buscar documento original:", docError);
             toast({
-              title: "Erro",
-              description: `${file.name}: Erro ao buscar documento original`,
+              title: "Erro de permissão",
+              description: `${file.name}: Erro de permissão ao buscar documento original - ${docError.message}`,
               variant: "destructive",
             });
             continue;
@@ -761,11 +797,16 @@ const Upload = () => {
       : entidade.identificador_1 || entidade.nome;
 
     try {
-      const { data: entidadeData } = await supabase
+      const { data: entidadeData, error: entityTypeError } = await supabase
         .from("entity_type")
         .select("id, nome_ident_1, nome_ident_2")
         .eq("nome", entidadeNome)
         .maybeSingle();
+
+      if (entityTypeError) {
+        console.error("RLS Error ao buscar tipo de entidade:", entityTypeError);
+        throw new Error(`Erro de permissão ao buscar tipo de entidade: ${entityTypeError.message}`);
+      }
 
       if (!entidadeData) {
         return {
@@ -778,10 +819,15 @@ const Upload = () => {
         };
       }
 
-      const { data: todosRegistros } = await supabase
+      const { data: todosRegistros, error: entityError } = await supabase
         .from("entity")
         .select("id, identificador_1, identificador_2, nome")
         .eq("entity_type_id", entidadeData.id);
+
+      if (entityError) {
+        console.error("RLS Error ao buscar entidades:", entityError);
+        throw new Error(`Erro de permissão ao buscar entidades: ${entityError.message}`);
+      }
 
       if (!todosRegistros || todosRegistros.length === 0) {
         return {
@@ -866,8 +912,15 @@ const Upload = () => {
         nome_ident_1: entidadeData.nome_ident_1,
         nome_ident_2: entidadeData.nome_ident_2,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking entity uniqueness:", error);
+      
+      // Se for erro de RLS, relançar para ser tratado pelo componente pai
+      if (error.message?.includes("permissão")) {
+        throw error;
+      }
+      
+      // Para outros erros, retornar como novo
       return {
         ...entidade,
         identificador_1: idForStorage,
@@ -995,21 +1048,31 @@ const Upload = () => {
 
       const { data, error } = await supabase.from("doc").update(docDataUpdate).eq("id", docId).select().single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("RLS Error ao atualizar documento:", error);
+        throw new Error(`Erro de permissão ao atualizar documento: ${error.message}`);
+      }
       return data;
     } else {
       // CRIAR novo documento COM folder_id
+      if (!user?.id) {
+        throw new Error("Usuário não autenticado para criar documento");
+      }
+
       const docData = {
         descricao: analysisResult!.descricao,
         data_referencia: analysisResult!.data_referencia,
         folder_id: selectedPasta!,
         aprovado: true,
-        usuario_criador_id: user!.id,
+        usuario_criador_id: user.id,
       };
 
       const { data, error } = await supabase.from("doc").insert(docData).select().single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("RLS Error ao criar documento:", error);
+        throw new Error(`Erro de permissão ao criar documento: ${error.message}`);
+      }
       return data;
     }
   };
@@ -1479,6 +1542,22 @@ const Upload = () => {
       }
     }
   };
+
+  // Verificar se o usuário está autenticado
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Acesso Negado</CardTitle>
+            <CardDescription>
+              Você precisa estar logado para acessar a página de upload.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
