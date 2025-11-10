@@ -47,46 +47,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        if (session?.user) {
-          // Fetch profile asynchronously without blocking
-          const fetchProfile = async () => {
-            try {
-              const { data: profileData } = await supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", session.user.id)
-                .maybeSingle();
-              
-              // Se fez login com Google e tem avatar_url, atualizar o perfil
-              const googleAvatarUrl = session.user.user_metadata?.avatar_url;
-              if (googleAvatarUrl && profileData && profileData.avatar_url !== googleAvatarUrl) {
-                await supabase
-                  .from("profiles")
-                  .update({ avatar_url: googleAvatarUrl })
-                  .eq("id", session.user.id);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
 
-                setProfile({ ...profileData, avatar_url: googleAvatarUrl });
-              } else {
-                setProfile(profileData);
-              }
-            } catch (err) {
-              console.error("Profile fetch error:", err);
-              setProfile(null);
+      if (session?.user) {
+        // Fetch profile asynchronously without blocking
+        const fetchProfile = async () => {
+          try {
+            const { data: profileData } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", session.user.id)
+              .maybeSingle();
+
+            // Se fez login com Google e tem avatar_url, atualizar o perfil
+            const googleAvatarUrl = session.user.user_metadata?.avatar_url;
+            if (googleAvatarUrl && profileData && profileData.avatar_url !== googleAvatarUrl) {
+              await supabase.from("profiles").update({ avatar_url: googleAvatarUrl }).eq("id", session.user.id);
+
+              setProfile({ ...profileData, avatar_url: googleAvatarUrl });
+            } else {
+              setProfile(profileData);
             }
-          };
-          
-          fetchProfile();
-        } else {
-          setProfile(null);
-        }
+          } catch (err) {
+            console.error("Profile fetch error:", err);
+            setProfile(null);
+          }
+        };
+
+        fetchProfile();
+      } else {
+        setProfile(null);
       }
-    );
+    });
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -151,14 +148,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/`,
-        },
-      });
-
-      if (error) throw error;
+      window.location.href = "https://auth.doctree.com.br/api/auth/google/login";
     } catch (error: any) {
       toast.error(error.message || "Erro ao fazer login com Google");
       throw error;
@@ -179,7 +169,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const resendVerificationEmail = async (email: string) => {
     try {
       const { error } = await supabase.auth.resend({
-        type: 'signup',
+        type: "signup",
         email: email,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
