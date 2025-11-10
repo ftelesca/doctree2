@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 interface Profile {
   id: string;
-  nome?: string;
+  full_name?: string;
   avatar_url?: string;
   last_folder?: string;
   organizacoes?: { nome: string };

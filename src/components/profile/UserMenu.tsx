@@ -29,7 +29,7 @@ export function UserMenu() {
       .slice(0, 2);
   };
 
-  const displayName = profile?.nome || user?.email?.split("@")[0] || "Usuário";
+  const displayName = profile?.full_name || user?.email?.split("@")[0] || "Usuário";
 
   return (
     <>

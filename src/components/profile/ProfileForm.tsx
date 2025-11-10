@@ -12,25 +12,25 @@ interface ProfileFormProps {
 
 export function ProfileForm({ onClose }: ProfileFormProps) {
   const { user, profile, updateProfile } = useAuth();
-  const [nome, setNome] = useState("");
+  const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (profile) {
-      setNome(profile.nome || "");
+      setFullName(profile.full_name || "");
     }
   }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!nome.trim()) {
+    if (!fullName.trim()) {
       return;
     }
 
     setIsLoading(true);
     try {
-      await updateProfile({ nome });
+      await updateProfile({ full_name: fullName });
       onClose();
     } catch (error) {
       // Error handled by AuthContext
@@ -54,8 +54,8 @@ export function ProfileForm({ onClose }: ProfileFormProps) {
       {/* Avatar Section */}
       <div className="flex flex-col items-center space-y-4">
         <Avatar className="h-20 w-20">
-          <AvatarImage src={profile?.avatar_url} alt={nome} />
-          <AvatarFallback className="bg-primary/10 text-primary font-medium text-lg">{getInitials(nome)}</AvatarFallback>
+          <AvatarImage src={profile?.avatar_url} alt={fullName} />
+          <AvatarFallback className="bg-primary/10 text-primary font-medium text-lg">{getInitials(fullName)}</AvatarFallback>
         </Avatar>
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
@@ -76,14 +76,14 @@ export function ProfileForm({ onClose }: ProfileFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="nome">Nome Completo</Label>
+          <Label htmlFor="fullName">Nome Completo</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              id="nome"
+              id="fullName"
               type="text"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               placeholder="Seu nome completo"
               className="pl-10"
               required

@@ -316,27 +316,27 @@ export type Database = {
       }
       profiles: {
         Row: {
-          created_at: string | null
           avatar_url: string | null
+          created_at: string | null
+          full_name: string
           id: string
           last_folder: string | null
-          nome: string
           updated_at: string | null
         }
         Insert: {
-          created_at?: string | null
           avatar_url?: string | null
+          created_at?: string | null
+          full_name: string
           id: string
           last_folder?: string | null
-          nome: string
           updated_at?: string | null
         }
         Update: {
-          created_at?: string | null
           avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string
           id?: string
           last_folder?: string | null
-          nome?: string
           updated_at?: string | null
         }
         Relationships: []

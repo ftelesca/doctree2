@@ -47,11 +47,11 @@ const Perfil = () => {
           <CardContent>
             <div className="flex items-center gap-4">
               <Avatar className="h-14 w-14">
-                <AvatarImage src={profile?.avatar_url} alt={profile?.nome || user?.email || "Usuário"} />
-                <AvatarFallback>{getInitials(profile?.nome || user?.email)}</AvatarFallback>
+                <AvatarImage src={profile?.avatar_url} alt={profile?.full_name || user?.email || "Usuário"} />
+                <AvatarFallback>{getInitials(profile?.full_name || user?.email)}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-base font-medium text-foreground">{profile?.nome || user?.email}</p>
+                <p className="text-base font-medium text-foreground">{profile?.full_name || user?.email}</p>
                 {user?.email && <p className="text-sm text-muted-foreground">{user.email}</p>}
                 {profile?.organizacoes?.nome && (
                   <p className="text-sm text-muted-foreground">Organização: {profile.organizacoes.nome}</p>
