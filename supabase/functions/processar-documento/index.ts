@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +14,29 @@ serve(async (req) => {
   }
 
   try {
-    const { extractedText, fileName, fileDate, userId } = await req.json();
+    // Validate input with Zod
+    const requestSchema = z.object({
+      extractedText: z.string().min(10, 'Extracted text must be at least 10 characters').max(500000, 'Extracted text must be less than 500000 characters'),
+      fileName: z.string().min(1, 'File name is required').max(500, 'File name must be less than 500 characters'),
+      fileDate: z.string().optional(),
+      userId: z.string().uuid('userId must be a valid UUID')
+    });
+
+    const body = await req.json();
+    const validation = requestSchema.safeParse(body);
+
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Invalid input', 
+          details: validation.error.issues 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { extractedText, fileName, fileDate, userId } = validation.data;
 
     console.log("Processing document:", { fileName, fileDate, userId });
 

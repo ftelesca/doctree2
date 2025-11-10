@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -127,8 +128,26 @@ serve(async (req) => {
   let queueId: string | null = null;
 
   try {
+    // Validate input with Zod
+    const requestSchema = z.object({
+      queueId: z.string().uuid('queueId must be a valid UUID')
+    });
+
     const body = await req.json();
-    queueId = body.queueId;
+    const validation = requestSchema.safeParse(body);
+
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Invalid input', 
+          details: validation.error.issues 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    queueId = validation.data.queueId;
 
     console.log("Processing queue item:", queueId);
 

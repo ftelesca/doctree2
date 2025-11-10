@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,10 +37,25 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { folder_id } = await req.json();
-    if (!folder_id) {
-      throw new Error('folder_id é obrigatório');
+    // Validate input with Zod
+    const requestSchema = z.object({
+      folder_id: z.string().uuid('folder_id must be a valid UUID')
+    });
+
+    const body = await req.json();
+    const validation = requestSchema.safeParse(body);
+
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validation.error.issues 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    const { folder_id } = validation.data;
 
     console.log(`[analisar-pasta] Iniciando análise da pasta ${folder_id} para usuário ${user.id}`);
 
