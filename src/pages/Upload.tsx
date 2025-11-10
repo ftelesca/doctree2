@@ -295,6 +295,16 @@ const Upload = () => {
   const [editPastaDescricao, setEditPastaDescricao] = useState("");
   const [reviewingQueueItem, setReviewingQueueItem] = useState<any>(null);
 
+  // Função para resetar estados após upload (sucesso ou erro)
+  const resetUploadState = () => {
+    setUploading(false);
+    setAnalyzing(false);
+    setCurrentPhase("");
+    setCurrentFile(null);
+    setFileHash(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   // File validation schema
   const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -711,11 +721,9 @@ const Upload = () => {
         description: error instanceof Error ? error.message : "Falha ao processar documentos",
         variant: "destructive",
       });
+      resetUploadState(); // Garantia extra no catch
     } finally {
-      setUploading(false);
-      setAnalyzing(false);
-      setCurrentPhase("");
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      resetUploadState(); // Reset principal sempre executado
     }
   };
 
