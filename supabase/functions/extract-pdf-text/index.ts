@@ -32,12 +32,27 @@ serve(async (req) => {
       .from("documentos")
       .download(storagePath);
 
-    if (downloadError || !fileData) {
+    if (downloadError) {
       console.error("Error downloading file:", downloadError);
       return new Response(
-        JSON.stringify({ success: false, error: "Erro ao baixar arquivo do storage" }),
+        JSON.stringify({ 
+          success: false, 
+          error: "Erro ao baixar arquivo do storage",
+          details: downloadError.message 
+        }),
         {
           status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!fileData) {
+      console.error("No file data returned from storage");
+      return new Response(
+        JSON.stringify({ success: false, error: "Arquivo não encontrado no storage" }),
+        {
+          status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
