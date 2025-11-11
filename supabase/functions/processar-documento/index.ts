@@ -84,6 +84,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "gpt-4o",
+        temperature: 0,
         messages: [
           {
             role: "system",
