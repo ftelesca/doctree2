@@ -16,10 +16,13 @@ serve(async (req) => {
   try {
     // Validate input with Zod
     const requestSchema = z.object({
-      extractedText: z.string().min(10, 'Extracted text must be at least 10 characters').max(500000, 'Extracted text must be less than 500000 characters'),
-      fileName: z.string().min(1, 'File name is required').max(500, 'File name must be less than 500 characters'),
+      extractedText: z
+        .string()
+        .min(10, "Extracted text must be at least 10 characters")
+        .max(500000, "Extracted text must be less than 500000 characters"),
+      fileName: z.string().min(1, "File name is required").max(500, "File name must be less than 500 characters"),
       fileDate: z.string().optional(),
-      userId: z.string().uuid('userId must be a valid UUID')
+      userId: z.string().uuid("userId must be a valid UUID"),
     });
 
     const body = await req.json();
@@ -27,12 +30,12 @@ serve(async (req) => {
 
     if (!validation.success) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: false,
-          error: 'Invalid input', 
-          details: validation.error.issues 
+          error: "Invalid input",
+          details: validation.error.issues,
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -80,7 +83,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [
           {
             role: "system",
