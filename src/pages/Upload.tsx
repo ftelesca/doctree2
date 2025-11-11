@@ -480,48 +480,64 @@ const Upload = () => {
   const processDocumentFile = async (context: DocumentProcessingContext): Promise<void> => {
     const { mode, file, hash, folderId, existingDocFile } = context;
 
-    // 1. Extração de texto (IGUAL para new e duplicate)
-    await setPhaseWithDelay(`Extraindo texto de ${file.name}...`);
+    // 1. Upload do arquivo primeiro (para PDFs, será processado no backend)
+    let storagePath = "";
     let extractedText = "";
+
+    if (mode === "new") {
+      await setPhaseWithDelay(`Fazendo upload de ${file.name}...`);
+      
+      storagePath = `${user!.id}/${crypto.randomUUID()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage.from("documentos").upload(storagePath, file);
+
+      if (uploadError) {
+        throw new Error(`Erro ao fazer upload de ${file.name}: ${uploadError.message}`);
+      }
+    } else if (mode === "duplicate" && existingDocFile) {
+      storagePath = existingDocFile.storage_path;
+    }
+
+    // 2. Extração de texto
+    await setPhaseWithDelay(`Extraindo texto de ${file.name}...`);
+    
     try {
       if (file.type === "application/pdf") {
-        const processed = await processPdfDocument(file, (msg) => setCurrentPhase(msg));
-        extractedText = sanitizeText(processed.combinedText);
+        // Para PDFs, usar edge function com ocrmypdf
+        const { data, error } = await supabase.functions.invoke("extract-pdf-text", {
+          body: { storagePath },
+        });
+
+        if (error || !data.success) {
+          throw new Error(data?.error || "Erro ao extrair texto do PDF");
+        }
+
+        extractedText = sanitizeText(data.extractedText);
       } else if (file.type.startsWith("image/")) {
+        // Para imagens, continuar usando tesseract no frontend
         const processed = await processImageDocument(file);
         extractedText = sanitizeText(processed.combinedText);
       }
     } catch (extractError) {
-      throw new Error(`Não foi possível extrair texto de ${file.name}`);
+      // Limpar storage se houver erro e for upload novo
+      if (mode === "new" && storagePath) {
+        await supabase.storage.from("documentos").remove([storagePath]);
+      }
+      throw new Error(`Não foi possível extrair texto de ${file.name}: ${extractError.message}`);
     }
 
-    // 2. Validação de texto mínimo (IGUAL para new e duplicate)
+    // 3. Validação de texto mínimo
     if (!extractedText || extractedText.trim().length < 10) {
+      // Limpar storage se houver erro e for upload novo
+      if (mode === "new" && storagePath) {
+        await supabase.storage.from("documentos").remove([storagePath]);
+      }
       throw new Error(`${file.name}: Documento não contém texto suficiente para análise`);
     }
 
-    // 3. Data do arquivo (CORRIGIDA uma única vez, usando timezone local)
+    // 4. Data do arquivo (usando timezone local)
     const fileDate = new Date(file.lastModified).toLocaleDateString("en-CA"); // YYYY-MM-DD local
 
-    // 4. Upload ao storage (APENAS se mode === 'new')
-    let storagePath: string;
-    if (mode === "new") {
-      await setPhaseWithDelay(`Enviando ${file.name}...`);
-      const fileExt = file.name.split(".").pop();
-      const filePath = `${crypto.randomUUID()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage.from("documentos").upload(filePath, file);
-
-      if (uploadError) {
-        throw new Error(`${file.name}: ${uploadError.message}`);
-      }
-
-      storagePath = filePath;
-      setCurrentFile({ name: file.name, path: filePath });
-    } else {
-      // Modo duplicate: reutilizar storage_path existente
-      storagePath = existingDocFile!.storage_path;
-    }
+    setCurrentFile({ name: file.name, path: storagePath });
 
     // 5. Adicionar à fila
     await addToQueue(
