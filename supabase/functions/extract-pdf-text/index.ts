@@ -129,7 +129,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in extract-pdf-text:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -172,7 +172,7 @@ async function extractTextFallback(pdfPath: string) {
     );
   } catch (error) {
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
       {
         status: 500,
         headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
