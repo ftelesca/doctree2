@@ -25,8 +25,9 @@ interface ShareFolderDialogProps {
 }
 
 interface ExistingShare {
-  id: string;
-  user_guest_id: string;
+  folder_id: string;
+  user_guest_id: string | null;
+  guest_email: string | null;
   confirmed: boolean | null;
   guest: {
     full_name: string | null;
@@ -62,8 +63,9 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
         .from("folder_share")
         .select(
           `
-          id,
+          folder_id,
           user_guest_id,
+          guest_email,
           confirmed,
           guest:profiles!user_guest_id (
             full_name
@@ -74,20 +76,34 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
 
       if (error) throw error;
 
-      // Buscar emails dos usuários
+      // Processar compartilhamentos (existentes e pendentes)
       const sharesWithEmails = await Promise.all(
         (data || []).map(async (share: any) => {
-          const { data: emailData } = await supabase.rpc("get_user_email_by_id", {
-            user_uuid: share.user_guest_id,
-          });
+          if (share.user_guest_id) {
+            // Usuário existente - buscar email
+            const { data: emailData } = await supabase.rpc("get_user_email_by_id", {
+              user_uuid: share.user_guest_id,
+            });
 
-          return {
-            ...share,
-            guest: {
-              ...share.guest,
-              email: emailData || "Email não disponível",
-            },
-          };
+            return {
+              ...share,
+              guest: {
+                ...share.guest,
+                email: emailData || "Email não disponível",
+              },
+            };
+          } else if (share.guest_email) {
+            // Usuário convidado (ainda não cadastrado)
+            return {
+              ...share,
+              guest: {
+                full_name: "Usuário convidado",
+                email: share.guest_email,
+              },
+            };
+          }
+
+          return share;
         })
       );
 
@@ -135,7 +151,7 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
     setLoading(true);
 
     try {
-      // Buscar ID do usuário pelo email
+      // Tentar buscar ID do usuário pelo email
       const { data: guestUserId, error: userError } = await supabase.rpc(
         "get_user_id_by_email",
         { user_email: validatedEmail }
@@ -143,26 +159,65 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
 
       if (userError) throw userError;
 
-      if (!guestUserId) {
-        toast.error(
-          "Usuário não encontrado. Ele precisa estar cadastrado no DocTree para receber compartilhamentos."
+      if (guestUserId) {
+        // Usuário existe - criar compartilhamento com user_guest_id
+        const { error: shareError } = await supabase.from("folder_share").insert({
+          folder_id: folder.id,
+          user_guest_id: guestUserId,
+          usuario_criador_id: user.id,
+          confirmed: null,
+        });
+
+        if (shareError) throw shareError;
+
+        toast.success(
+          "Compartilhamento criado! O usuário será notificado no próximo login."
         );
-        return;
+      } else {
+        // Usuário não existe - criar compartilhamento com guest_email
+        const { error: shareError } = await supabase.from("folder_share").insert({
+          folder_id: folder.id,
+          guest_email: validatedEmail,
+          usuario_criador_id: user.id,
+          confirmed: null,
+        });
+
+        if (shareError) throw shareError;
+
+        // Enviar email de convite via edge function
+        try {
+          const { data: inviteData, error: inviteError } = await supabase.functions.invoke(
+            "invite-user",
+            {
+              body: {
+                email: validatedEmail,
+                folder_id: folder.id,
+                folder_name: folder.descricao,
+                invited_by_id: user.id,
+              },
+            }
+          );
+
+          if (inviteError) {
+            console.error("Erro ao enviar email de convite:", inviteError);
+            console.error("Response data:", inviteData);
+            toast.warning(
+              "Compartilhamento criado! Porém não foi possível enviar o email de convite. Verifique o console para mais detalhes."
+            );
+          } else {
+            console.log("Invite sent successfully:", inviteData);
+            toast.success(
+              "Convite enviado! O usuário receberá um email para se cadastrar no DocTree."
+            );
+          }
+        } catch (inviteError) {
+          console.error("Erro ao enviar email de convite:", inviteError);
+          toast.warning(
+            "Compartilhamento criado! Porém não foi possível enviar o email de convite."
+          );
+        }
       }
 
-      // Criar compartilhamento com confirmed=null
-      const { error: shareError } = await supabase.from("folder_share").insert({
-        folder_id: folder.id,
-        user_guest_id: guestUserId,
-        usuario_criador_id: user.id,
-        confirmed: null,
-      });
-
-      if (shareError) throw shareError;
-
-      toast.success(
-        "Compartilhamento criado! O usuário será notificado no próximo login."
-      );
       setNewEmail("");
       await loadShares();
     } catch (error: any) {
@@ -177,9 +232,21 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
     }
   };
 
-  const handleDeleteShare = async (shareId: string) => {
+  const handleDeleteShare = async (share: ExistingShare) => {
     try {
-      const { error } = await supabase.from("folder_share").delete().eq("id", shareId);
+      let query = supabase
+        .from("folder_share")
+        .delete()
+        .eq("folder_id", share.folder_id);
+
+      // Use user_guest_id or guest_email depending on which is set
+      if (share.user_guest_id) {
+        query = query.eq("user_guest_id", share.user_guest_id);
+      } else if (share.guest_email) {
+        query = query.eq("guest_email", share.guest_email);
+      }
+
+      const { error } = await query;
 
       if (error) throw error;
 
@@ -261,7 +328,7 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteShare(share.id)}
+                          onClick={() => handleDeleteShare(share)}
                           title="Remover compartilhamento"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -296,7 +363,7 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              O usuário precisa estar cadastrado no DocTree
+              Se o usuário não estiver cadastrado, receberá um convite por email
             </p>
           </div>
         </div>

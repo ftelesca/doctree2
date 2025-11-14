@@ -314,6 +314,55 @@ export type Database = {
         }
         Relationships: []
       }
+      folder_share: {
+        Row: {
+          folder_id: string
+          user_guest_id: string | null
+          guest_email: string | null
+          usuario_criador_id: string
+          confirmed: boolean | null
+          created_at: string | null
+        }
+        Insert: {
+          folder_id: string
+          user_guest_id?: string | null
+          guest_email?: string | null
+          usuario_criador_id: string
+          confirmed?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          folder_id?: string
+          user_guest_id?: string | null
+          guest_email?: string | null
+          usuario_criador_id?: string
+          confirmed?: boolean | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folder_share_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folder"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folder_share_user_guest_id_fkey"
+            columns: ["user_guest_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folder_share_usuario_criador_id_fkey"
+            columns: ["usuario_criador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
