@@ -30,6 +30,7 @@ import {
 import { getIconComponent } from "@/utils/iconHelper";
 import { Badge } from "@/components/ui/badge";
 import { AnalysisDialog } from "@/components/navegador/AnalysisDialog";
+import { ShareFolderDialog } from "@/components/navegador/ShareFolderDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
@@ -56,8 +57,9 @@ interface Pasta {
   descricao: string;
   created_at: string;
   updated_at: string;
+  usuario_criador_id: string;
   isOwner: boolean;
-  usuario_criador_id?: string;
+  ownerName?: string | null;
 }
 
 interface Documento {
@@ -92,7 +94,6 @@ export default function Navegador() {
   const [pastaExpandida, setPastaExpandida] = useState<Record<string, boolean>>({});
   const [ordenacaoDesc, setOrdenacaoDesc] = useState(true);
   const [loading, setLoading] = useState(true);
-  // removed old "antigo" folder dialog state: dialogOpen, deleteDialogOpen, deletePastaId, editingPasta, formData
   const [entidadeRaiz, setEntidadeRaiz] = useState<{
     id: string;
     nome: string;
@@ -172,7 +173,6 @@ export default function Navegador() {
   // Estados para compartilhamento de pastas
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedPastaForShare, setSelectedPastaForShare] = useState<Pasta | null>(null);
-  const [shareEmail, setShareEmail] = useState("");
 
   useEffect(() => {
     document.title = "Navegador - DocTree";
@@ -210,7 +210,7 @@ export default function Navegador() {
 
   const loadPastas = async () => {
     setLoading(true);
-    
+
     if (!user) {
       setLoading(false);
       return;
@@ -220,14 +220,14 @@ export default function Navegador() {
       // Buscar pastas próprias
       const { data: ownFolders, error: ownError } = await supabase
         .from("folder")
-        .select("*")
+        .select("id, descricao, created_at, updated_at, usuario_criador_id")
         .eq("usuario_criador_id", user.id)
         .order("descricao", { ascending: true });
 
       if (ownError) throw ownError;
 
-      // Buscar pastas compartilhadas (usando any para contornar tipos)
-      const { data: sharedFolders, error: sharedError } = await (supabase as any)
+      // Buscar pastas compartilhadas CONFIRMADAS com nome do owner
+      const { data: sharedFolders, error: sharedError } = await supabase
         .from("folder_share")
         .select(`
           folder_id,
@@ -237,6 +237,9 @@ export default function Navegador() {
             created_at,
             updated_at,
             usuario_criador_id
+          ),
+          owner:profiles!usuario_criador_id (
+            full_name
           )
         `)
         .eq("user_guest_id", user.id)
@@ -245,16 +248,26 @@ export default function Navegador() {
       if (sharedError) throw sharedError;
 
       // Combinar pastas próprias e compartilhadas
-      const ownWithFlag = (ownFolders || []).map((f) => ({ ...f, isOwner: true }));
-      const sharedWithFlag = (sharedFolders || [])
+      const ownWithFlag: Pasta[] = (ownFolders || []).map((f) => ({
+        ...f,
+        isOwner: true,
+        ownerName: null,
+      }));
+
+      const sharedWithFlag: Pasta[] = (sharedFolders || [])
         .filter((sf: any) => sf.folder)
-        .map((sf: any) => ({ ...sf.folder, isOwner: false }));
+        .map((sf: any) => ({
+          ...sf.folder,
+          isOwner: false,
+          ownerName: sf.owner?.full_name || "Usuário",
+        }));
 
       const allFolders = [...ownWithFlag, ...sharedWithFlag].sort((a, b) =>
         a.descricao.localeCompare(b.descricao)
       );
 
       setPastas(allFolders);
+
       if (allFolders.length > 0) {
         await loadDocumentosPorPasta(allFolders.map((p) => p.id));
       }
@@ -262,7 +275,7 @@ export default function Navegador() {
       console.error("Erro ao carregar pastas:", error);
       toast.error("Erro ao carregar pastas");
     }
-    
+
     setLoading(false);
   };
 
@@ -452,7 +465,6 @@ export default function Navegador() {
 
     return documentosFiltrados;
   };
-  // removed old folder create/edit/delete helpers (handleSave, handleDelete, openDialog, closeDialog)
 
   const handleDownload = async (storagePath: string, nomeArquivo: string) => {
     try {
@@ -522,9 +534,6 @@ export default function Navegador() {
     setDeleteDocDialogOpen(true);
   };
 
-  // ============================================
-  // FUNÇÃO AUXILIAR REUTILIZÁVEL
-  // ============================================
   const cleanupOrphanEntity = async (entityId: string): Promise<boolean> => {
     try {
       const { data: remainingRelations, error: checkError } = await supabase
@@ -539,18 +548,15 @@ export default function Navegador() {
         const { error: entityError } = await supabase.from("entity").delete().eq("id", entityId);
 
         if (entityError) throw entityError;
-        return true; // Entidade foi deletada
+        return true;
       }
-      return false; // Entidade ainda tem relacionamentos
+      return false;
     } catch (error) {
       console.error(`Erro ao limpar entidade ${entityId}:`, error);
       return false;
     }
   };
 
-  // ============================================
-  // EXCLUSÃO DE DOCUMENTO (REFATORADO)
-  // ============================================
   const handleConfirmDeleteDoc = async () => {
     if (!selectedDocForDelete) return;
 
@@ -560,7 +566,6 @@ export default function Navegador() {
     }
 
     try {
-      // 1. Buscar todas as entidades relacionadas ANTES de deletar
       const { data: relatedEntities, error: fetchError } = await supabase
         .from("doc_entity")
         .select("entity_id")
@@ -570,25 +575,21 @@ export default function Navegador() {
 
       const entityIds = relatedEntities?.map((re) => re.entity_id) || [];
 
-      // 2. Deletar relacionamentos doc_entity
       const { error: entitiesError } = await supabase.from("doc_entity").delete().eq("doc_id", selectedDocForDelete.id);
 
       if (entitiesError) throw entitiesError;
 
-      // 3. Limpar entidades órfãs
       let deletedEntitiesCount = 0;
       for (const entityId of entityIds) {
         const wasDeleted = await cleanupOrphanEntity(entityId);
         if (wasDeleted) {
           deletedEntitiesCount++;
-          // Se a entidade deletada era a raiz, limpar
           if (entidadeRaiz?.id === entityId) {
             setEntidadeRaiz(null);
           }
         }
       }
 
-      // 4. Buscar arquivos associados
       const { data: files, error: filesError } = await supabase
         .from("doc_file")
         .select("storage_path")
@@ -596,7 +597,6 @@ export default function Navegador() {
 
       if (filesError) throw filesError;
 
-      // 5. Deletar arquivos do storage
       if (files && files.length > 0) {
         const filePaths = files.map((f) => f.storage_path);
         const { error: storageError } = await supabase.storage.from("documentos").remove(filePaths);
@@ -604,17 +604,14 @@ export default function Navegador() {
         if (storageError) throw storageError;
       }
 
-      // 6. Deletar registros de arquivos
       const { error: docFilesError } = await supabase.from("doc_file").delete().eq("doc_id", selectedDocForDelete.id);
 
       if (docFilesError) throw docFilesError;
 
-      // 7. Deletar documento
       const { error: docError } = await supabase.from("doc").delete().eq("id", selectedDocForDelete.id);
 
       if (docError) throw docError;
 
-      // Mensagem de sucesso com informação sobre entidades deletadas
       if (deletedEntitiesCount > 0) {
         toast.success(
           `Documento excluído com sucesso. ${deletedEntitiesCount} entidade(s) órfã(s) também foram removidas.`,
@@ -627,7 +624,6 @@ export default function Navegador() {
       setSelectedDocForDelete(null);
       setDeleteConfirmText("");
 
-      // Limpar seleção se o documento excluído estava selecionado
       if (selectedDocument && files?.some((f) => f.storage_path === selectedDocument.storage_path)) {
         setSelectedDocument(null);
       }
@@ -691,72 +687,6 @@ export default function Navegador() {
     setDeleteEntityDialogOpen(true);
   };
 
-  // Funções de compartilhamento
-  const handleShareClick = (pasta: Pasta) => {
-    setSelectedPastaForShare(pasta);
-    setShareEmail("");
-    setShareDialogOpen(true);
-  };
-
-  const handleShareFolder = async () => {
-    if (!selectedPastaForShare || !shareEmail.trim() || !user) {
-      toast.error("Preencha o email para compartilhar");
-      return;
-    }
-
-    try {
-      // Verificar se o email pertence a um usuário
-      const { data: profiles, error: profileError } = await supabase
-        .from("profiles")
-        .select("id")
-        .ilike("full_name", `%${shareEmail}%`)
-        .limit(1);
-
-      if (profileError) throw profileError;
-
-      if (!profiles || profiles.length === 0) {
-        toast.error("Usuário não encontrado");
-        return;
-      }
-
-      const guestUserId = profiles[0].id;
-
-      // Verificar se já foi compartilhado (usando any)
-      const { data: existing } = await (supabase as any)
-        .from("folder_share")
-        .select("id")
-        .eq("folder_id", selectedPastaForShare.id)
-        .eq("user_guest_id", guestUserId)
-        .maybeSingle();
-
-      if (existing) {
-        toast.error("Pasta já compartilhada com este usuário");
-        return;
-      }
-
-      // Criar compartilhamento (usando any)
-      const { error: shareError } = await (supabase as any).from("folder_share").insert({
-        folder_id: selectedPastaForShare.id,
-        user_guest_id: guestUserId,
-        usuario_criador_id: user.id,
-        confirmed: true,
-      });
-
-      if (shareError) throw shareError;
-
-      toast.success("Pasta compartilhada com sucesso");
-      setShareDialogOpen(false);
-      setSelectedPastaForShare(null);
-      setShareEmail("");
-    } catch (error) {
-      console.error("Erro ao compartilhar pasta:", error);
-      toast.error("Erro ao compartilhar pasta");
-    }
-  };
-
-  // ============================================
-  // EXCLUSÃO DE ENTIDADE (REFATORADO)
-  // ============================================
   const handleConfirmDeleteEntity = async () => {
     if (!selectedEntityForDelete) return;
 
@@ -766,7 +696,6 @@ export default function Navegador() {
     }
 
     try {
-      // Deletar apenas o relacionamento com este documento específico
       const { error: docEntityError } = await supabase
         .from("doc_entity")
         .delete()
@@ -775,13 +704,11 @@ export default function Navegador() {
 
       if (docEntityError) throw docEntityError;
 
-      // Verificar se a entidade ficou órfã e deletá-la se necessário
       const wasDeleted = await cleanupOrphanEntity(selectedEntityForDelete.id);
 
       if (wasDeleted) {
         toast.success("Entidade removida do documento e excluída (sem outros vínculos)");
 
-        // Se a entidade excluída era a raiz, limpar
         if (entidadeRaiz?.id === selectedEntityForDelete.id) {
           setEntidadeRaiz(null);
         }
@@ -800,7 +727,6 @@ export default function Navegador() {
     }
   };
 
-  // Load PDF when document is selected
   useEffect(() => {
     if (!selectedDocument) {
       if (pdfUrl) {
@@ -866,13 +792,16 @@ export default function Navegador() {
                 <div className="flex-1">
                   <Select value={selectedPastaFiltro ?? "TODOS"} onValueChange={handlePastaFiltroChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Todos" />
+                      <SelectValue placeholder="Todas as pastas" />
                     </SelectTrigger>
                     <SelectContent className="bg-background z-50">
-                      <SelectItem value="TODOS">Todos</SelectItem>
+                      <SelectItem value="TODOS">Todas as pastas</SelectItem>
                       {pastas.map((pasta) => (
                         <SelectItem key={pasta.id} value={pasta.id}>
-                          {pasta.descricao}
+                          {pasta.isOwner 
+                            ? pasta.descricao 
+                            : `${pasta.descricao} (${pasta.ownerName})`
+                          }
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -991,7 +920,6 @@ export default function Navegador() {
                     // Visualização com Entidade como Raiz
                     <Card className="border-0 shadow-none rounded-none bg-transparent">
                       <CardContent className="p-0 text-sm">
-                        {/* [CÓDIGO LONGO DA VISUALIZAÇÃO COM ENTIDADE RAIZ - mantido igual] */}
                         {(() => {
                           const documentosFiltrados = aplicarFiltros();
                           const documentosPorPastaEntidade: Record<string, { pasta: Pasta; documentos: Documento[] }> =
@@ -1085,7 +1013,12 @@ export default function Navegador() {
                                             <Folder className="h-4 w-4 text-primary flex-shrink-0" />
                                           )}
                                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                                            <span className="text-sm font-medium truncate">{pasta.descricao}</span>
+                                            <span className="text-sm font-medium truncate">
+                                              {pasta.isOwner 
+                                                ? pasta.descricao 
+                                                : `${pasta.descricao} (${pasta.ownerName})`
+                                              }
+                                            </span>
                                             <Badge variant="secondary" className="text-xs flex-shrink-0">
                                               {documentos.length}
                                             </Badge>
@@ -1243,24 +1176,26 @@ export default function Navegador() {
                                                                   </span>
                                                                 </div>
 
-                                                                <div className="flex items-center gap-2">
-                                                                  <div className="h-4 w-4 flex-shrink-0"></div>
-                                                                  <div className="invisible">
-                                                                    <Badge
-                                                                      variant="outline"
-                                                                      className="text-xs flex-shrink-0"
-                                                                    >
-                                                                      {ent.nome}
-                                                                    </Badge>
-                                                                  </div>
-                                                                  <div className="text-xs text-muted-foreground flex-1">
-                                                                    {ent.nome_ident_1}: {reg.identificador_1}
-                                                                    {reg.identificador_2 && ent.nome_ident_2 && (
-                                                                      <>
-                                                                        {" "}
-                                                                        • {ent.nome_ident_2}: {reg.identificador_2}
-                                                                      </>
-                                                                    )}
+                                                                <div className="flex items-center gap-2 justify-between">
+                                                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                    <div className="h-4 w-4 flex-shrink-0"></div>
+                                                                    <div className="invisible">
+                                                                      <Badge
+                                                                        variant="outline"
+                                                                        className="text-xs flex-shrink-0"
+                                                                      >
+                                                                        {ent.nome}
+                                                                      </Badge>
+                                                                    </div>
+                                                                    <div className="text-xs text-muted-foreground truncate">
+                                                                      {ent.nome_ident_1}: {reg.identificador_1}
+                                                                      {reg.identificador_2 && ent.nome_ident_2 && (
+                                                                        <>
+                                                                          {" "}
+                                                                          • {ent.nome_ident_2}: {reg.identificador_2}
+                                                                        </>
+                                                                      )}
+                                                                    </div>
                                                                   </div>
                                                                   {pasta.isOwner && (
                                                                     <div className="flex items-center gap-1 flex-shrink-0">
@@ -1363,10 +1298,17 @@ export default function Navegador() {
                                     <Folder className="h-4 w-4 text-primary flex-shrink-0" />
                                   )}
                                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <span className="text-sm font-medium truncate">{pasta.descricao}</span>
+                                    <span className="text-sm font-medium truncate">
+                                      {pasta.isOwner 
+                                        ? pasta.descricao 
+                                        : `${pasta.descricao} (${pasta.ownerName})`
+                                      }
+                                    </span>
                                     <Badge variant="secondary" className="text-xs flex-shrink-0">
                                       {documentos.length}
                                     </Badge>
+
+                                    {/* Análise AI - SEMPRE VISÍVEL */}
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1383,6 +1325,8 @@ export default function Navegador() {
                                     >
                                       <Sparkles className="h-3 w-3" />
                                     </Button>
+
+                                    {/* Compartilhar - APENAS PARA OWNER */}
                                     {pasta.isOwner && (
                                       <Button
                                         variant="ghost"
@@ -1390,7 +1334,8 @@ export default function Navegador() {
                                         className="h-6 w-6 flex-shrink-0"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          handleShareClick(pasta);
+                                          setSelectedPastaForShare(pasta);
+                                          setShareDialogOpen(true);
                                         }}
                                         title="Compartilhar pasta"
                                       >
@@ -1538,21 +1483,23 @@ export default function Navegador() {
                                                             </span>
                                                           </div>
 
-                                                          <div className="flex items-center gap-2">
-                                                            <div className="h-4 w-4 flex-shrink-0"></div>
-                                                            <div className="invisible">
-                                                              <Badge variant="outline" className="text-xs flex-shrink-0">
-                                                                {ent.nome}
-                                                              </Badge>
-                                                            </div>
-                                                            <div className="text-xs text-muted-foreground flex-1">
-                                                              {ent.nome_ident_1}: {reg.identificador_1}
-                                                              {reg.identificador_2 && ent.nome_ident_2 && (
-                                                                <>
-                                                                  {" "}
-                                                                  • {ent.nome_ident_2}: {reg.identificador_2}
-                                                                </>
-                                                              )}
+                                                          <div className="flex items-center gap-2 justify-between">
+                                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                              <div className="h-4 w-4 flex-shrink-0"></div>
+                                                              <div className="invisible">
+                                                                <Badge variant="outline" className="text-xs flex-shrink-0">
+                                                                  {ent.nome}
+                                                                </Badge>
+                                                              </div>
+                                                              <div className="text-xs text-muted-foreground truncate">
+                                                                {ent.nome_ident_1}: {reg.identificador_1}
+                                                                {reg.identificador_2 && ent.nome_ident_2 && (
+                                                                  <>
+                                                                    {" "}
+                                                                    • {ent.nome_ident_2}: {reg.identificador_2}
+                                                                  </>
+                                                                )}
+                                                              </div>
                                                             </div>
                                                             {pasta.isOwner && (
                                                               <div className="flex items-center gap-1 flex-shrink-0">
@@ -1704,8 +1651,6 @@ export default function Navegador() {
           </ResizablePanel>
         </ResizablePanelGroup>
       )}
-
-      {/* removed old folder create/edit/delete dialog & alert (marked "antigo") */}
 
       {/* Dialog Nova Pasta - Filtro */}
       <Dialog open={novaPastaDialogOpen} onOpenChange={setNovaPastaDialogOpen}>
@@ -1944,44 +1889,12 @@ export default function Navegador() {
         folderName={selectedPastaForAnalysis?.descricao || ""}
       />
 
-      {/* Dialog de Compartilhamento de Pasta */}
-      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Compartilhar Pasta</DialogTitle>
-            <DialogDescription>
-              Compartilhe a pasta "{selectedPastaForShare?.descricao}" com outro usuário
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="share-email">Nome do usuário</Label>
-              <Input
-                id="share-email"
-                value={shareEmail}
-                onChange={(e) => setShareEmail(e.target.value)}
-                placeholder="Digite o nome do usuário"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && shareEmail.trim()) {
-                    handleShareFolder();
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Digite o nome completo do usuário com quem deseja compartilhar
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShareDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleShareFolder} disabled={!shareEmail.trim()}>
-              Compartilhar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog de Compartilhamento - NOVO COMPONENTE */}
+      <ShareFolderDialog
+        folder={selectedPastaForShare}
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+      />
     </div>
   );
 }
