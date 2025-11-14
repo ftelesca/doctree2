@@ -25,6 +25,7 @@ import {
   Download,
   X,
   Sparkles,
+  Share2,
 } from "lucide-react";
 import { getIconComponent } from "@/utils/iconHelper";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +56,8 @@ interface Pasta {
   descricao: string;
   created_at: string;
   updated_at: string;
+  isOwner: boolean;
+  usuario_criador_id?: string;
 }
 
 interface Documento {
@@ -166,6 +169,11 @@ export default function Navegador() {
   const [editEntityIdent1, setEditEntityIdent1] = useState("");
   const [editEntityIdent2, setEditEntityIdent2] = useState("");
 
+  // Estados para compartilhamento de pastas
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [selectedPastaForShare, setSelectedPastaForShare] = useState<Pasta | null>(null);
+  const [shareEmail, setShareEmail] = useState("");
+
   useEffect(() => {
     document.title = "Navegador - DocTree";
     const init = async () => {
@@ -202,17 +210,59 @@ export default function Navegador() {
 
   const loadPastas = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("folder").select("*").order("descricao", { ascending: true });
+    
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-    if (error) {
+    try {
+      // Buscar pastas próprias
+      const { data: ownFolders, error: ownError } = await supabase
+        .from("folder")
+        .select("*")
+        .eq("usuario_criador_id", user.id)
+        .order("descricao", { ascending: true });
+
+      if (ownError) throw ownError;
+
+      // Buscar pastas compartilhadas (usando any para contornar tipos)
+      const { data: sharedFolders, error: sharedError } = await (supabase as any)
+        .from("folder_share")
+        .select(`
+          folder_id,
+          folder:folder_id (
+            id,
+            descricao,
+            created_at,
+            updated_at,
+            usuario_criador_id
+          )
+        `)
+        .eq("user_guest_id", user.id)
+        .eq("confirmed", true);
+
+      if (sharedError) throw sharedError;
+
+      // Combinar pastas próprias e compartilhadas
+      const ownWithFlag = (ownFolders || []).map((f) => ({ ...f, isOwner: true }));
+      const sharedWithFlag = (sharedFolders || [])
+        .filter((sf: any) => sf.folder)
+        .map((sf: any) => ({ ...sf.folder, isOwner: false }));
+
+      const allFolders = [...ownWithFlag, ...sharedWithFlag].sort((a, b) =>
+        a.descricao.localeCompare(b.descricao)
+      );
+
+      setPastas(allFolders);
+      if (allFolders.length > 0) {
+        await loadDocumentosPorPasta(allFolders.map((p) => p.id));
+      }
+    } catch (error) {
       console.error("Erro ao carregar pastas:", error);
       toast.error("Erro ao carregar pastas");
-    } else {
-      setPastas(data || []);
-      if (data) {
-        await loadDocumentosPorPasta(data.map((p) => p.id));
-      }
     }
+    
     setLoading(false);
   };
 
@@ -362,6 +412,10 @@ export default function Navegador() {
   const handleEditarClick = () => {
     const pasta = pastas.find((p) => p.id === selectedPastaFiltro);
     if (pasta) {
+      if (!pasta.isOwner) {
+        toast.error("Você não pode editar uma pasta compartilhada");
+        return;
+      }
       setEditPastaDescricao(pasta.descricao);
       setEditPastaDialogOpen(true);
     }
@@ -637,6 +691,69 @@ export default function Navegador() {
     setDeleteEntityDialogOpen(true);
   };
 
+  // Funções de compartilhamento
+  const handleShareClick = (pasta: Pasta) => {
+    setSelectedPastaForShare(pasta);
+    setShareEmail("");
+    setShareDialogOpen(true);
+  };
+
+  const handleShareFolder = async () => {
+    if (!selectedPastaForShare || !shareEmail.trim() || !user) {
+      toast.error("Preencha o email para compartilhar");
+      return;
+    }
+
+    try {
+      // Verificar se o email pertence a um usuário
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("full_name", `%${shareEmail}%`)
+        .limit(1);
+
+      if (profileError) throw profileError;
+
+      if (!profiles || profiles.length === 0) {
+        toast.error("Usuário não encontrado");
+        return;
+      }
+
+      const guestUserId = profiles[0].id;
+
+      // Verificar se já foi compartilhado (usando any)
+      const { data: existing } = await (supabase as any)
+        .from("folder_share")
+        .select("id")
+        .eq("folder_id", selectedPastaForShare.id)
+        .eq("user_guest_id", guestUserId)
+        .maybeSingle();
+
+      if (existing) {
+        toast.error("Pasta já compartilhada com este usuário");
+        return;
+      }
+
+      // Criar compartilhamento (usando any)
+      const { error: shareError } = await (supabase as any).from("folder_share").insert({
+        folder_id: selectedPastaForShare.id,
+        user_guest_id: guestUserId,
+        usuario_criador_id: user.id,
+        confirmed: true,
+      });
+
+      if (shareError) throw shareError;
+
+      toast.success("Pasta compartilhada com sucesso");
+      setShareDialogOpen(false);
+      setSelectedPastaForShare(null);
+      setShareEmail("");
+    } catch (error) {
+      console.error("Erro ao compartilhar pasta:", error);
+      toast.error("Erro ao compartilhar pasta");
+    }
+  };
+
   // ============================================
   // EXCLUSÃO DE ENTIDADE (REFATORADO)
   // ============================================
@@ -775,7 +892,11 @@ export default function Navegador() {
                   variant="outline"
                   size="icon"
                   onClick={handleEditarClick}
-                  disabled={!selectedPastaFiltro || selectedPastaFiltro === "TODOS"}
+                  disabled={
+                    !selectedPastaFiltro ||
+                    selectedPastaFiltro === "TODOS" ||
+                    !pastas.find((p) => p.id === selectedPastaFiltro)?.isOwner
+                  }
                   title="Editar pasta"
                 >
                   <Pencil className="h-4 w-4" />
@@ -1049,30 +1170,34 @@ export default function Navegador() {
                                                               {doc.doc_entity.length}
                                                             </Badge>
                                                           )}
-                                                          <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-5 w-5 flex-shrink-0"
-                                                            onClick={(e) => {
-                                                              e.stopPropagation();
-                                                              handleEditDocClick(doc);
-                                                            }}
-                                                            title="Editar documento"
-                                                          >
-                                                            <Edit className="h-4 w-4" />
-                                                          </Button>
-                                                          <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-5 w-5 flex-shrink-0 text-destructive hover:text-destructive"
-                                                            onClick={(e) => {
-                                                              e.stopPropagation();
-                                                              handleDeleteDocClick(doc);
-                                                            }}
-                                                            title="Excluir documento"
-                                                          >
-                                                            <Trash2 className="h-4 w-4" />
-                                                          </Button>
+                                                          {pasta.isOwner && (
+                                                            <>
+                                                              <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-5 w-5 flex-shrink-0"
+                                                                onClick={(e) => {
+                                                                  e.stopPropagation();
+                                                                  handleEditDocClick(doc);
+                                                                }}
+                                                                title="Editar documento"
+                                                              >
+                                                                <Edit className="h-4 w-4" />
+                                                              </Button>
+                                                              <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-5 w-5 flex-shrink-0 text-destructive hover:text-destructive"
+                                                                onClick={(e) => {
+                                                                  e.stopPropagation();
+                                                                  handleDeleteDocClick(doc);
+                                                                }}
+                                                                title="Excluir documento"
+                                                              >
+                                                                <Trash2 className="h-4 w-4" />
+                                                              </Button>
+                                                            </>
+                                                          )}
                                                         </div>
                                                       </div>
                                                     </div>
@@ -1104,8 +1229,8 @@ export default function Navegador() {
                                                               }}
                                                               title="Clique para reorganizar a árvore com esta entidade"
                                                             >
-                                                              <div className="flex items-center gap-2 justify-between">
-                                                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                              <div className="flex flex-col gap-1">
+                                                                <div className="flex items-center gap-2">
                                                                   <IconComponent className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                                                   <Badge
                                                                     variant="outline"
@@ -1117,51 +1242,53 @@ export default function Navegador() {
                                                                     {reg.nome}
                                                                   </span>
                                                                 </div>
-                                                                <div className="flex items-center gap-1 flex-shrink-0">
-                                                                  <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-5 w-5"
-                                                                    onClick={(e) => {
-                                                                      e.stopPropagation();
-                                                                      handleEditEntityClick(reg);
-                                                                    }}
-                                                                    title="Editar entidade"
-                                                                  >
-                                                                    <Edit className="h-4 w-4" />
-                                                                  </Button>
-                                                                  <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-5 w-5 text-destructive hover:text-destructive"
-                                                                    onClick={(e) => {
-                                                                      e.stopPropagation();
-                                                                      handleDeleteEntityClick(reg, doc.id);
-                                                                    }}
-                                                                    title="Remover entidade do documento"
-                                                                  >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                  </Button>
-                                                                </div>
-                                                              </div>
 
-                                                              <div className="flex items-center gap-2 mt-1">
-                                                                <div className="h-4 w-4 flex-shrink-0"></div>
-                                                                <div className="invisible">
-                                                                  <Badge
-                                                                    variant="outline"
-                                                                    className="text-xs flex-shrink-0"
-                                                                  >
-                                                                    {ent.nome}
-                                                                  </Badge>
-                                                                </div>
-                                                                <div className="text-xs text-muted-foreground">
-                                                                  {ent.nome_ident_1}: {reg.identificador_1}
-                                                                  {reg.identificador_2 && ent.nome_ident_2 && (
-                                                                    <>
-                                                                      {" "}
-                                                                      • {ent.nome_ident_2}: {reg.identificador_2}
-                                                                    </>
+                                                                <div className="flex items-center gap-2">
+                                                                  <div className="h-4 w-4 flex-shrink-0"></div>
+                                                                  <div className="invisible">
+                                                                    <Badge
+                                                                      variant="outline"
+                                                                      className="text-xs flex-shrink-0"
+                                                                    >
+                                                                      {ent.nome}
+                                                                    </Badge>
+                                                                  </div>
+                                                                  <div className="text-xs text-muted-foreground flex-1">
+                                                                    {ent.nome_ident_1}: {reg.identificador_1}
+                                                                    {reg.identificador_2 && ent.nome_ident_2 && (
+                                                                      <>
+                                                                        {" "}
+                                                                        • {ent.nome_ident_2}: {reg.identificador_2}
+                                                                      </>
+                                                                    )}
+                                                                  </div>
+                                                                  {pasta.isOwner && (
+                                                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                                                      <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-5 w-5"
+                                                                        onClick={(e) => {
+                                                                          e.stopPropagation();
+                                                                          handleEditEntityClick(reg);
+                                                                        }}
+                                                                        title="Editar entidade"
+                                                                      >
+                                                                        <Edit className="h-4 w-4" />
+                                                                      </Button>
+                                                                      <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-5 w-5 text-destructive hover:text-destructive"
+                                                                        onClick={(e) => {
+                                                                          e.stopPropagation();
+                                                                          handleDeleteEntityClick(reg, doc.id);
+                                                                        }}
+                                                                        title="Remover entidade do documento"
+                                                                      >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                      </Button>
+                                                                    </div>
                                                                   )}
                                                                 </div>
                                                               </div>
@@ -1256,6 +1383,20 @@ export default function Navegador() {
                                     >
                                       <Sparkles className="h-3 w-3" />
                                     </Button>
+                                    {pasta.isOwner && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 flex-shrink-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleShareClick(pasta);
+                                        }}
+                                        title="Compartilhar pasta"
+                                      >
+                                        <Share2 className="h-3 w-3" />
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
 
@@ -1327,30 +1468,34 @@ export default function Navegador() {
                                                         {entidades.length}
                                                       </Badge>
                                                     )}
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-5 w-5 flex-shrink-0"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleEditDocClick(doc);
-                                                      }}
-                                                      title="Editar documento"
-                                                    >
-                                                      <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-5 w-5 flex-shrink-0 text-destructive hover:text-destructive"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteDocClick(doc);
-                                                      }}
-                                                      title="Excluir documento"
-                                                    >
-                                                      <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                                    {pasta.isOwner && (
+                                                      <>
+                                                        <Button
+                                                          variant="ghost"
+                                                          size="icon"
+                                                          className="h-5 w-5 flex-shrink-0"
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleEditDocClick(doc);
+                                                          }}
+                                                          title="Editar documento"
+                                                        >
+                                                          <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                          variant="ghost"
+                                                          size="icon"
+                                                          className="h-5 w-5 flex-shrink-0 text-destructive hover:text-destructive"
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteDocClick(doc);
+                                                          }}
+                                                          title="Excluir documento"
+                                                        >
+                                                          <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                      </>
+                                                    )}
                                                   </div>
                                                 </div>
                                               </div>
@@ -1382,8 +1527,8 @@ export default function Navegador() {
                                                         }}
                                                         title="Clique para reorganizar a árvore com esta entidade"
                                                       >
-                                                        <div className="flex items-center gap-2 justify-between">
-                                                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                        <div className="flex flex-col gap-1">
+                                                          <div className="flex items-center gap-2">
                                                             <IconComponent className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                                             <Badge variant="outline" className="text-xs flex-shrink-0">
                                                               {ent.nome}
@@ -1392,48 +1537,50 @@ export default function Navegador() {
                                                               {reg.nome}
                                                             </span>
                                                           </div>
-                                                          <div className="flex items-center gap-1 flex-shrink-0">
-                                                            <Button
-                                                              variant="ghost"
-                                                              size="icon"
-                                                              className="h-5 w-5"
-                                                              onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleEditEntityClick(reg);
-                                                              }}
-                                                              title="Editar entidade"
-                                                            >
-                                                              <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                              variant="ghost"
-                                                              size="icon"
-                                                              className="h-5 w-5 text-destructive hover:text-destructive"
-                                                              onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDeleteEntityClick(reg, doc.id);
-                                                              }}
-                                                              title="Remover entidade do documento"
-                                                            >
-                                                              <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                          </div>
-                                                        </div>
 
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                          <div className="h-4 w-4 flex-shrink-0"></div>
-                                                          <div className="invisible">
-                                                            <Badge variant="outline" className="text-xs flex-shrink-0">
-                                                              {ent.nome}
-                                                            </Badge>
-                                                          </div>
-                                                          <div className="text-xs text-muted-foreground">
-                                                            {ent.nome_ident_1}: {reg.identificador_1}
-                                                            {reg.identificador_2 && ent.nome_ident_2 && (
-                                                              <>
-                                                                {" "}
-                                                                • {ent.nome_ident_2}: {reg.identificador_2}
-                                                              </>
+                                                          <div className="flex items-center gap-2">
+                                                            <div className="h-4 w-4 flex-shrink-0"></div>
+                                                            <div className="invisible">
+                                                              <Badge variant="outline" className="text-xs flex-shrink-0">
+                                                                {ent.nome}
+                                                              </Badge>
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground flex-1">
+                                                              {ent.nome_ident_1}: {reg.identificador_1}
+                                                              {reg.identificador_2 && ent.nome_ident_2 && (
+                                                                <>
+                                                                  {" "}
+                                                                  • {ent.nome_ident_2}: {reg.identificador_2}
+                                                                </>
+                                                              )}
+                                                            </div>
+                                                            {pasta.isOwner && (
+                                                              <div className="flex items-center gap-1 flex-shrink-0">
+                                                                <Button
+                                                                  variant="ghost"
+                                                                  size="icon"
+                                                                  className="h-5 w-5"
+                                                                  onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleEditEntityClick(reg);
+                                                                  }}
+                                                                  title="Editar entidade"
+                                                                >
+                                                                  <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                  variant="ghost"
+                                                                  size="icon"
+                                                                  className="h-5 w-5 text-destructive hover:text-destructive"
+                                                                  onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteEntityClick(reg, doc.id);
+                                                                  }}
+                                                                  title="Remover entidade do documento"
+                                                                >
+                                                                  <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                              </div>
                                                             )}
                                                           </div>
                                                         </div>
@@ -1796,6 +1943,45 @@ export default function Navegador() {
         folderId={selectedPastaForAnalysis?.id || null}
         folderName={selectedPastaForAnalysis?.descricao || ""}
       />
+
+      {/* Dialog de Compartilhamento de Pasta */}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Compartilhar Pasta</DialogTitle>
+            <DialogDescription>
+              Compartilhe a pasta "{selectedPastaForShare?.descricao}" com outro usuário
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="share-email">Nome do usuário</Label>
+              <Input
+                id="share-email"
+                value={shareEmail}
+                onChange={(e) => setShareEmail(e.target.value)}
+                placeholder="Digite o nome do usuário"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && shareEmail.trim()) {
+                    handleShareFolder();
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Digite o nome completo do usuário com quem deseja compartilhar
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShareDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleShareFolder} disabled={!shareEmail.trim()}>
+              Compartilhar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
