@@ -158,12 +158,13 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
       );
 
       if (guestUserId) {
-        // Usuário existe - criar compartilhamento apenas com user_guest_id
+        // Usuário existe - criar compartilhamento com user_guest_id e guest_email
         const { error: shareError } = await (supabase as any)
           .from("folder_share")
           .insert([{
             folder_id: folder.id,
             user_guest_id: guestUserId,
+            guest_email: validatedEmail,
             usuario_criador_id: user.id,
             confirmed: null,
           }]);
