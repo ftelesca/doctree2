@@ -27,7 +27,7 @@ import { FolderDialogs } from "@/components/navegador/dialogs/FolderDialogs";
 import { DocumentDialogs } from "@/components/navegador/dialogs/DocumentDialogs";
 import { EntityDialogs } from "@/components/navegador/dialogs/EntityDialogs";
 import { ShareFolderDialog } from "@/components/navegador/ShareFolderDialog";
-import { PendingSharesDialog } from "@/components/navegador/PendingSharesDialog";
+
 import { AnalysisDialog } from "@/components/navegador/AnalysisDialog";
 
 interface EntityRaiz {
@@ -136,6 +136,12 @@ export default function Navegador() {
     loadEntityTypes();
   }, []);
 
+  // Recarrega pastas quando compartilhamentos são atualizados
+  useEffect(() => {
+    const handler = () => loadFolders();
+    window.addEventListener("shares:updated", handler);
+    return () => window.removeEventListener("shares:updated", handler);
+  }, [loadFolders]);
   useEffect(() => {
     if (folders.length > 0) {
       loadDocuments(folders.map((f) => f.id));
@@ -530,7 +536,7 @@ export default function Navegador() {
         }}
       />
 
-      <PendingSharesDialog />
+      
 
       <AnalysisDialog
         open={analysisOpen}
