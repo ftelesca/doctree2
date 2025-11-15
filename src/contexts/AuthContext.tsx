@@ -151,15 +151,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/`,
-        },
+      // Call the custom OAuth initiate edge function
+      const { data, error } = await supabase.functions.invoke('google-oauth-initiate', {
+        body: {}
       });
 
       if (error) throw error;
+
+      if (!data || !data.authUrl || !data.state) {
+        throw new Error('Invalid response from OAuth initiate function');
+      }
+
+      // Store state for CSRF validation
+      sessionStorage.setItem('oauth_state', data.state);
+
+      // Redirect to Google OAuth
+      window.location.href = data.authUrl;
     } catch (error: any) {
+      console.error('Error initiating Google login:', error);
       toast.error(error.message || "Erro ao fazer login com Google");
       throw error;
     }
