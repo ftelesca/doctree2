@@ -37,6 +37,7 @@ interface ExistingShare {
 
 const emailSchema = z.string()
   .email({ message: "Email inválido" })
+  .max(255, { message: "Email muito longo" })
   .trim()
   .toLowerCase();
 
@@ -196,6 +197,7 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
             email: validatedEmail,
             password: tempPassword,
             options: {
+              emailRedirectTo: `${window.location.origin}/`,
               data: {
                 full_name: validatedEmail.split('@')[0],
               },
@@ -223,11 +225,15 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
       setNewEmail("");
       await loadShares();
     } catch (error: any) {
-      console.error("Erro ao compartilhar pasta:", error);
-      if (error.code === "23505") {
+      console.error("Erro ao compartilhar pasta:", {
+        code: (error as any)?.code,
+        message: (error as any)?.message,
+        details: (error as any)?.details,
+      });
+      if ((error as any)?.code === "23505") {
         toast.error("Esta pasta já está compartilhada com este usuário");
       } else {
-        toast.error("Erro ao compartilhar pasta");
+        toast.error((error as any)?.message || "Erro ao compartilhar pasta");
       }
     } finally {
       setLoading(false);
