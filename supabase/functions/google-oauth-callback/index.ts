@@ -14,20 +14,17 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const code = url.searchParams.get('code');
-    const state = url.searchParams.get('state');
-    const error = url.searchParams.get('error');
-
-    // Handle user denial
-    if (error) {
-      console.log('User denied OAuth consent:', error);
-      return Response.redirect('https://doctree.com.br/auth?error=access_denied', 302);
-    }
+    const { code, state } = await req.json();
 
     if (!code) {
-      console.error('No authorization code received');
-      return Response.redirect('https://doctree.com.br/auth?error=no_code', 302);
+      console.error('No authorization code provided');
+      return new Response(
+        JSON.stringify({ error: 'No authorization code provided' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
@@ -59,7 +56,13 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text();
       console.error('Token exchange failed:', errorData);
-      return Response.redirect('https://doctree.com.br/auth?error=token_exchange_failed', 302);
+      return new Response(
+        JSON.stringify({ error: 'Token exchange failed', details: errorData }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const tokens = await tokenResponse.json();
@@ -76,20 +79,36 @@ serve(async (req) => {
 
     if (authError) {
       console.error('Supabase auth error:', authError);
-      return Response.redirect('https://doctree.com.br/auth?error=auth_failed', 302);
+      return new Response(
+        JSON.stringify({ error: 'Authentication failed', details: authError.message }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     console.log('Successfully created Supabase session for user:', authData.user?.email);
 
-    // Redirect to frontend with session tokens
-    const redirectUrl = new URL('https://doctree.com.br/auth/callback');
-    redirectUrl.searchParams.set('access_token', authData.session.access_token);
-    redirectUrl.searchParams.set('refresh_token', authData.session.refresh_token);
-    redirectUrl.searchParams.set('state', state || '');
-
-    return Response.redirect(redirectUrl.toString(), 302);
+    // Return the session tokens to the frontend
+    return new Response(
+      JSON.stringify({
+        access_token: authData.session.access_token,
+        refresh_token: authData.session.refresh_token,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   } catch (error) {
     console.error('Error in google-oauth-callback:', error);
-    return Response.redirect('https://doctree.com.br/auth?error=unexpected_error', 302);
+    const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   }
 });

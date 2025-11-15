@@ -11,36 +11,23 @@ export default function AuthCallback() {
     const handleCallback = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
+        const code = params.get('code');
         const state = params.get('state');
         const errorParam = params.get('error');
 
-        // Handle errors from the edge function
+        // Handle errors from Google
         if (errorParam) {
-          let errorMessage = 'Erro ao fazer login com Google';
-          switch (errorParam) {
-            case 'access_denied':
-              errorMessage = 'Acesso negado. Você precisa autorizar o acesso para fazer login.';
-              break;
-            case 'no_code':
-              errorMessage = 'Código de autorização não recebido.';
-              break;
-            case 'token_exchange_failed':
-              errorMessage = 'Falha ao trocar o código por tokens.';
-              break;
-            case 'auth_failed':
-              errorMessage = 'Falha ao criar sessão.';
-              break;
-          }
+          const errorMessage = errorParam === 'access_denied' 
+            ? 'Acesso negado. Você precisa autorizar o acesso para fazer login.'
+            : 'Erro ao fazer login com Google';
           setError(errorMessage);
           toast.error(errorMessage);
           setTimeout(() => navigate('/auth'), 3000);
           return;
         }
 
-        if (!accessToken || !refreshToken) {
-          setError('Tokens de sessão não recebidos');
+        if (!code) {
+          setError('Código de autorização não recebido');
           toast.error('Erro ao processar login');
           setTimeout(() => navigate('/auth'), 3000);
           return;
@@ -59,10 +46,36 @@ export default function AuthCallback() {
         // Clear stored state
         sessionStorage.removeItem('oauth_state');
 
+        console.log('Exchanging authorization code for session...');
+
+        // Call the edge function to exchange the code for tokens
+        const { data: exchangeData, error: exchangeError } = await supabase.functions.invoke(
+          'google-oauth-callback',
+          {
+            body: { code, state }
+          }
+        );
+
+        if (exchangeError) {
+          console.error('Error exchanging code:', exchangeError);
+          setError('Falha ao trocar código por sessão');
+          toast.error('Erro ao fazer login');
+          setTimeout(() => navigate('/auth'), 3000);
+          return;
+        }
+
+        if (!exchangeData || !exchangeData.access_token || !exchangeData.refresh_token) {
+          console.error('Invalid response from callback function:', exchangeData);
+          setError('Resposta inválida do servidor');
+          toast.error('Erro ao fazer login');
+          setTimeout(() => navigate('/auth'), 3000);
+          return;
+        }
+
         // Set the session in Supabase client
         const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
+          access_token: exchangeData.access_token,
+          refresh_token: exchangeData.refresh_token,
         });
 
         if (sessionError) {
