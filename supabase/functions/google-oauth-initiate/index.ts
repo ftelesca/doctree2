@@ -32,7 +32,8 @@ serve(async (req) => {
     authUrl.searchParams.set('scope', 'openid email profile');
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('access_type', 'offline');
-    authUrl.searchParams.set('prompt', 'select_account');
+    // Remove prompt parameter to skip account selection for returning users
+    // Google will automatically handle consent and account selection as needed
 
     console.log('Generated OAuth URL:', authUrl.toString());
 
