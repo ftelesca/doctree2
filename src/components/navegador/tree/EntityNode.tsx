@@ -57,32 +57,30 @@ export function EntityNode({
           </div>
 
           {/* Linha 2: Espaçamento + Identificadores + Botões */}
-          <div className="flex items-center gap-2 justify-between">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              {/* Espaçamento invisível para alinhar com linha 1 */}
-              <div className="h-4 w-4 flex-shrink-0"></div>
-              <div className="invisible">
-                <Badge variant="outline" className="text-xs flex-shrink-0">
-                  {entity.entity_type.nome}
-                </Badge>
-              </div>
-              
-              {/* Identificadores */}
-              <div className="text-xs text-muted-foreground truncate">
-                {entity.entity_type.nome_ident_1}: {entity.identificador_1}
-                {entity.identificador_2 && entity.entity_type.nome_ident_2 && (
-                  <>
-                    {" "}
-                    • {entity.entity_type.nome_ident_2}:{" "}
-                    {entity.identificador_2}
-                  </>
-                )}
-              </div>
+          <div className="flex items-center gap-2">
+            {/* Espaçamento invisível para alinhar com linha 1 */}
+            <div className="h-4 w-4 flex-shrink-0"></div>
+            <div className="invisible">
+              <Badge variant="outline" className="text-xs flex-shrink-0">
+                {entity.entity_type.nome}
+              </Badge>
+            </div>
+            
+            {/* Identificadores */}
+            <div className="text-xs text-muted-foreground">
+              {entity.entity_type.nome_ident_1}: {entity.identificador_1}
+              {entity.identificador_2 && entity.entity_type.nome_ident_2 && (
+                <>
+                  {" "}
+                  • {entity.entity_type.nome_ident_2}:{" "}
+                  {entity.identificador_2}
+                </>
+              )}
             </div>
 
-            {/* Botões de Editar/Excluir - Apenas se isOwner */}
+            {/* Botões de Editar/Excluir - logo após identificadores */}
             {pasta.isOwner && (onEdit || onDelete) && (
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <>
                 {onEdit && (
                   <Button
                     variant="ghost"
@@ -111,7 +109,7 @@ export function EntityNode({
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
-              </div>
+              </>
             )}
           </div>
         </div>
