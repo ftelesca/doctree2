@@ -59,6 +59,7 @@ serve(async (req) => {
           invited_by_name: inviterName,
           folder_id: folder_id,
           folder_name: folder_name,
+          full_name: email.split('@')[0],
         },
       });
 
