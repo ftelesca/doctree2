@@ -176,7 +176,7 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
           "Compartilhamento criado! O usuário será notificado no próximo login."
         );
       } else {
-        // Usuário não existe - criar compartilhamento com guest_email E criar usuário
+        // Usuário não existe - criar compartilhamento apenas com guest_email
         const { error: shareError } = await (supabase as any)
           .from("folder_share")
           .insert([{
@@ -188,38 +188,9 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
 
         if (shareError) throw shareError;
 
-        // Criar usuário via signUp - envia email para definir senha
-        try {
-          // Gerar senha temporária aleatória
-          const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
-          
-          const { error: signUpError } = await supabase.auth.signUp({
-            email: validatedEmail,
-            password: tempPassword,
-            options: {
-              emailRedirectTo: `${window.location.origin}/reset-password`,
-              data: {
-                full_name: validatedEmail.split('@')[0],
-              },
-            },
-          });
-
-          if (signUpError) {
-            console.error("Erro ao criar usuário:", signUpError);
-            toast.warning(
-              "Compartilhamento criado! Porém não foi possível enviar o email de convite automaticamente."
-            );
-          } else {
-            toast.success(
-              "Convite enviado! O usuário receberá um email para confirmar o cadastro e acessar a pasta compartilhada."
-            );
-          }
-        } catch (signUpError) {
-          console.error("Erro ao criar usuário:", signUpError);
-          toast.warning(
-            "Compartilhamento criado! Porém não foi possível enviar o email de convite."
-          );
-        }
+        toast.success(
+          "Convite criado! Quando o usuário se cadastrar com este email, ele terá acesso à pasta."
+        );
       }
 
       setNewEmail("");
