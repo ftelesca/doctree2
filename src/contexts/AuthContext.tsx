@@ -167,17 +167,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      // Try to invalidate the session on the server (global sign-out)
       const { error } = await supabase.auth.signOut();
-      
-      // Session not found is not an error for logout
+
+      // If it's a different error than "Session not found", surface it
       if (error && error.message !== 'Session not found') {
         throw error;
       }
-      
+    } catch (error: any) {
+      // Only show non-session related errors
+      if (error?.message !== 'Session not found') {
+        toast.error(error?.message || "Erro ao sair");
+      }
+    } finally {
+      // Ensure local cleanup even if the server reports missing session
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+
       toast.success("Logout realizado com sucesso!");
       navigate("/auth");
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao sair");
     }
   };
 
