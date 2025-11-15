@@ -19,7 +19,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -99,12 +99,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, rememberMe: boolean = true) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      // Store rememberMe preference in localStorage
+      if (rememberMe) {
+        localStorage.setItem('auth-remember-me', 'true');
+      } else {
+        localStorage.removeItem('auth-remember-me');
+        // Set a flag to clear session on browser close
+        sessionStorage.setItem('auth-session-only', 'true');
+      }
 
       if (error) {
         // Traduzir erro de email não confirmado

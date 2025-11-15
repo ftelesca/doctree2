@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
 import { GoogleIcon } from "./GoogleIcon";
@@ -16,6 +17,7 @@ export function LoginForm({ onSwitchToSignUp, onSwitchToForgot }: LoginFormProps
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showResendVerification, setShowResendVerification] = useState(false);
@@ -29,7 +31,7 @@ export function LoginForm({ onSwitchToSignUp, onSwitchToForgot }: LoginFormProps
     setShowResendVerification(false);
 
     try {
-      await signIn(email, password);
+      await signIn(email, password, rememberMe);
     } catch (error: any) {
       if (error.code === "email_not_confirmed") {
         setShowResendVerification(true);
@@ -147,11 +149,25 @@ export function LoginForm({ onSwitchToSignUp, onSwitchToForgot }: LoginFormProps
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="remember" 
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+              disabled={isLoading || isGoogleLoading}
+            />
+            <Label 
+              htmlFor="remember" 
+              className="text-sm font-normal cursor-pointer"
+            >
+              Manter conectado
+            </Label>
+          </div>
           <Button
             type="button"
             variant="link"
-            className="px-0 text-sm"
+            className="px-0 text-sm h-auto"
             onClick={onSwitchToForgot}
             disabled={isLoading || isGoogleLoading}
           >
