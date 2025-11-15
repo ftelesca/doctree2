@@ -15,7 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { FolderOpen } from "lucide-react";
 
 interface PendingShare {
-  id: string;
+  folder_id: string;
+  user_guest_id: string;
   folder: {
     descricao: string;
   };
@@ -43,7 +44,8 @@ export function PendingSharesDialog() {
         .from("folder_share")
         .select(
           `
-          id,
+          folder_id,
+          user_guest_id,
           folder:folder_id (
             descricao
           ),
@@ -60,7 +62,7 @@ export function PendingSharesDialog() {
       if (error) throw error;
 
       if (data) {
-        setCurrentPending(data as PendingShare);
+        setCurrentPending(data as any as PendingShare);
       }
     } catch (error) {
       console.error("Erro ao verificar compartilhamentos pendentes:", error);
@@ -76,7 +78,8 @@ export function PendingSharesDialog() {
       const { error } = await supabase
         .from("folder_share")
         .update({ confirmed: accept })
-        .eq("id", currentPending.id);
+        .eq("folder_id", currentPending.folder_id)
+        .eq("user_guest_id", currentPending.user_guest_id);
 
       if (error) throw error;
 

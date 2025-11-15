@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
       toast.success("Senha redefinida com sucesso!");
 
       setTimeout(() => {
-        navigate("/");
+        navigate("/navegador");
       }, 2000);
     } catch (error: any) {
       toast.error(error.message || "Erro ao redefinir senha");

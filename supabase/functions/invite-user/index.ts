@@ -53,7 +53,7 @@ serve(async (req) => {
     // Send invite email using Supabase Auth Admin API
     const { data: inviteData, error: inviteError } =
       await supabaseClient.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${siteUrl}/navegador`,
+        redirectTo: `${siteUrl}/reset-password`,
         data: {
           invited_by: invited_by_id,
           invited_by_name: inviterName,
@@ -91,7 +91,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in invite-user function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

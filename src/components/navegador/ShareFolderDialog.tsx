@@ -81,9 +81,9 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
         (data || []).map(async (share: any) => {
           if (share.user_guest_id) {
             // Usuário existente - buscar email
-            const { data: emailData } = await supabase.rpc("get_user_email_by_id", {
-              user_uuid: share.user_guest_id,
-            });
+      const { data: emailData } = await (supabase as any).rpc("get_user_email_by_id", {
+        user_uuid: share.user_guest_id,
+      });
 
             return {
               ...share,
@@ -129,11 +129,11 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
     const validatedEmail = validation.data;
 
     // Validar não compartilhar consigo mesmo
-    const { data: currentUserEmail } = await supabase.rpc("get_user_email_by_id", {
+    const { data: currentUserEmail } = await (supabase as any).rpc("get_user_email_by_id", {
       user_uuid: user.id,
     });
 
-    if (validatedEmail === currentUserEmail?.toLowerCase()) {
+    if (validatedEmail === ((currentUserEmail as string) || "").toLowerCase()) {
       toast.error("Você não pode compartilhar uma pasta com você mesmo");
       return;
     }
@@ -152,21 +152,22 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
 
     try {
       // Tentar buscar ID do usuário pelo email
-      const { data: guestUserId, error: userError } = await supabase.rpc(
+      const { data: guestUserId } = await (supabase as any).rpc(
         "get_user_id_by_email",
         { user_email: validatedEmail }
       );
 
-      if (userError) throw userError;
-
       if (guestUserId) {
         // Usuário existe - criar compartilhamento com user_guest_id
-        const { error: shareError } = await supabase.from("folder_share").insert({
-          folder_id: folder.id,
-          user_guest_id: guestUserId,
-          usuario_criador_id: user.id,
-          confirmed: null,
-        });
+        const { error: shareError } = await (supabase as any)
+          .from("folder_share")
+          .insert([{
+            folder_id: folder.id,
+            user_guest_id: guestUserId,
+            guest_email: validatedEmail,
+            usuario_criador_id: user.id,
+            confirmed: null,
+          }]);
 
         if (shareError) throw shareError;
 
@@ -175,12 +176,14 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
         );
       } else {
         // Usuário não existe - criar compartilhamento com guest_email
-        const { error: shareError } = await supabase.from("folder_share").insert({
-          folder_id: folder.id,
-          guest_email: validatedEmail,
-          usuario_criador_id: user.id,
-          confirmed: null,
-        });
+        const { error: shareError } = await (supabase as any)
+          .from("folder_share")
+          .insert([{
+            folder_id: folder.id,
+            guest_email: validatedEmail,
+            usuario_criador_id: user.id,
+            confirmed: null,
+          }]);
 
         if (shareError) throw shareError;
 
@@ -312,7 +315,7 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
                   ) : (
                     shares.map((share) => (
                       <div
-                        key={share.id}
+                        key={`${share.folder_id}:${share.user_guest_id ?? share.guest_email}`}
                         className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
                       >
                         <div className="flex-1 min-w-0">

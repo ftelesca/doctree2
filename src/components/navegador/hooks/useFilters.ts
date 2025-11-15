@@ -6,6 +6,7 @@ interface Documento {
   id: string;
   descricao: string;
   data_referencia: string;
+  folder_id: string;
   doc_entity: Array<{
     entity: {
       id: string;
