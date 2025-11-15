@@ -144,6 +144,8 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              {/* Google OAuth callback route (must match redirect_uri) */}
+              <Route path="/auth/google/callback" element={<AuthCallback />} />
               <Route path="*" element={<NotFound />} />
               </Routes>
             </TooltipProvider>
