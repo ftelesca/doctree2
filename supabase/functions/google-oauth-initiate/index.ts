@@ -32,7 +32,7 @@ serve(async (req) => {
     authUrl.searchParams.set('scope', 'openid email profile');
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('access_type', 'offline');
-    authUrl.searchParams.set('prompt', 'consent');
+    authUrl.searchParams.set('prompt', 'select_account');
 
     console.log('Generated OAuth URL:', authUrl.toString());
 
