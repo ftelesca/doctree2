@@ -49,7 +49,7 @@ export function PdfViewer({ document, onClose, onDownload }: PdfViewerProps) {
         }
 
         const url = URL.createObjectURL(data);
-        setPdfUrl(url);
+        setPdfUrl(url + '#navpanes=0');
       } catch (err) {
         console.error("Erro ao carregar PDF:", err);
         setError("Não foi possível carregar o documento");
