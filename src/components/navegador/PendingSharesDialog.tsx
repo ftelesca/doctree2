@@ -42,18 +42,12 @@ export function PendingSharesDialog() {
     try {
       const { data, error } = await supabase
         .from("folder_share")
-        .select(
-          `
+        .select(`
           folder_id,
           user_guest_id,
-          folder:folder_id (
-            descricao
-          ),
-          owner:profiles!usuario_criador_id (
-            full_name
-          )
-        `
-        )
+          usuario_criador_id,
+          folder:folder (descricao)
+        `)
         .eq("user_guest_id", user.id)
         .is("confirmed", null)
         .limit(1)
@@ -62,7 +56,18 @@ export function PendingSharesDialog() {
       if (error) throw error;
 
       if (data) {
-        setCurrentPending(data as any as PendingShare);
+        // Buscar dados do dono
+        const { data: ownerData } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", data.usuario_criador_id)
+          .single();
+
+        setCurrentPending({
+          ...data,
+          folder: Array.isArray(data.folder) ? data.folder[0] : data.folder,
+          owner: ownerData || { full_name: null }
+        } as any as PendingShare);
       }
     } catch (error) {
       console.error("Erro ao verificar compartilhamentos pendentes:", error);

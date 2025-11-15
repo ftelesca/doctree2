@@ -188,16 +188,16 @@ export function ShareFolderDialog({ folder, open, onOpenChange }: ShareFolderDia
 
         if (shareError) throw shareError;
 
-        // Criar usuário via signUp - isso dispara email automático de confirmação
+        // Criar usuário via signUp - envia email para definir senha
         try {
-          // Gerar senha temporária aleatória (usuário vai redefinir via email)
+          // Gerar senha temporária aleatória
           const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
           
           const { error: signUpError } = await supabase.auth.signUp({
             email: validatedEmail,
             password: tempPassword,
             options: {
-              emailRedirectTo: `${window.location.origin}/`,
+              emailRedirectTo: `${window.location.origin}/reset-password`,
               data: {
                 full_name: validatedEmail.split('@')[0],
               },
