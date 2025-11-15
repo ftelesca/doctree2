@@ -82,11 +82,12 @@ export function PendingSharesDialog() {
       );
 
       setCurrentPending(null);
-
+      // Notificar outras telas para recarregar pastas compartilhadas
+      window.dispatchEvent(new CustomEvent("shares:updated"));
       // Verificar se há mais pendências após um delay
       setTimeout(() => {
         checkPendingShares();
-      }, 500);
+      }, 300);
     } catch (error) {
       console.error("Erro ao processar resposta:", error);
       toast.error("Erro ao processar resposta. Tente novamente.");
