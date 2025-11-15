@@ -12,7 +12,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Perfil from "./pages/Perfil";
 import Upload from "./pages/Upload";
-import Documentos from "./pages/Documentos";
+
 import Navegador from "./pages/Navegador";
 import Entidades from "./pages/Entidades";
 import Admin from "./pages/Admin";
@@ -104,14 +104,6 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Navegador />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/editor"
-                element={
-                  <ProtectedRoute>
-                    <Documentos />
                   </ProtectedRoute>
                 }
               />
