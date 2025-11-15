@@ -54,10 +54,13 @@ export function FolderNode({
         )}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className="text-sm font-medium truncate">
-            {pasta.isOwner
-              ? pasta.descricao
-              : `${pasta.descricao} (${pasta.ownerName})`}
+            {pasta.descricao}
           </span>
+          {!pasta.isOwner && pasta.ownerName && (
+            <Badge variant="outline" className="text-xs flex-shrink-0">
+              {pasta.ownerName}
+            </Badge>
+          )}
           <Badge variant="secondary" className="text-xs flex-shrink-0">
             {documentCount}
           </Badge>
