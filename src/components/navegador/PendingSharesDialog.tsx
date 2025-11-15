@@ -70,7 +70,8 @@ export function PendingSharesDialog() {
         .from("folder_share")
         .update({ confirmed: accept })
         .eq("folder_id", currentPending.folder_id)
-        .eq("user_guest_id", currentPending.user_guest_id);
+        .eq("user_guest_id", currentPending.user_guest_id)
+        .is("confirmed", null);
 
       if (error) throw error;
 
