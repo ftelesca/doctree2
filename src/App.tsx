@@ -9,6 +9,7 @@ import { LastFolderProvider } from "./contexts/LastFolderContext";
 import { MainLayout } from "./components/layout/MainLayout";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 import Perfil from "./pages/Perfil";
 import Upload from "./pages/Upload";
@@ -98,6 +99,10 @@ const App = () => (
                 element={
                   <ResetPasswordPage />
                 } 
+              />
+              <Route 
+                path="/auth/callback" 
+                element={<AuthCallback />} 
               />
               <Route
                 path="/navegador"
