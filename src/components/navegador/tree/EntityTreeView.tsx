@@ -57,9 +57,7 @@ export function EntityTreeView({
   Object.keys(documentosPorPasta).forEach((pastaId) => {
     const documentos = documentosPorPasta[pastaId] || [];
     documentos.forEach((doc) => {
-      const temEntidadeRaiz = doc.doc_entity.some(
-        (de) => de.entity.id === entidadeRaiz.id
-      );
+      const temEntidadeRaiz = doc.doc_entity.some((de) => de.entity.id === entidadeRaiz.id);
       if (temEntidadeRaiz) {
         docsComEntidadeRaiz.add(doc.id);
         pastasPorDoc[doc.id] = pastaId;
@@ -71,17 +69,13 @@ export function EntityTreeView({
   const docsPorPastaFiltrados: Record<string, Documento[]> = {};
   Object.keys(documentosPorPasta).forEach((pastaId) => {
     const documentos = documentosPorPasta[pastaId] || [];
-    const docsNaPasta = documentos.filter((doc) =>
-      docsComEntidadeRaiz.has(doc.id)
-    );
+    const docsNaPasta = documentos.filter((doc) => docsComEntidadeRaiz.has(doc.id));
     if (docsNaPasta.length > 0) {
       docsPorPastaFiltrados[pastaId] = docsNaPasta;
     }
   });
 
-  const pastasComDocs = pastas.filter(
-    (pasta) => docsPorPastaFiltrados[pasta.id]?.length > 0
-  );
+  const pastasComDocs = pastas.filter((pasta) => docsPorPastaFiltrados[pasta.id]?.length > 0);
 
   const IconeRaiz = entidadeRaiz.icone ? getIconComponent(entidadeRaiz.icone) : null;
 
@@ -106,9 +100,7 @@ export function EntityTreeView({
             {IconeRaiz && <IconeRaiz className="h-5 w-5 text-primary" />}
             <div className="flex-1">
               <div className="font-semibold text-base">{entidadeRaiz.nome}</div>
-              <div className="text-xs text-muted-foreground">
-                {entidadeRaiz.tipo}
-              </div>
+              <div className="text-xs text-muted-foreground">{entidadeRaiz.tipo}</div>
             </div>
             <Badge variant="secondary" className="text-xs">
               {pastasComDocs.length} pasta(s)
@@ -123,10 +115,7 @@ export function EntityTreeView({
           const isPastaExpanded = pastaExpandida[pastaKey] !== false;
 
           return (
-            <div
-              key={pasta.id}
-              className="border-b border-border/50"
-            >
+            <div key={pasta.id} className="border-b border-border/50">
               {/* Cabeçalho da Pasta */}
               <div
                 className="flex items-center justify-between px-3 py-2 hover:bg-accent/50 cursor-pointer group"
@@ -147,7 +136,7 @@ export function EntityTreeView({
                   <span className="font-medium">{pasta.descricao}</span>
                   {!pasta.isOwner && pasta.ownerName && (
                     <Badge variant="outline" className="text-xs ml-2">
-                      Compartilhada por {pasta.ownerName}
+                      {pasta.ownerName}
                     </Badge>
                   )}
                 </div>
@@ -167,9 +156,7 @@ export function EntityTreeView({
                     const entidadesFilhas = (doc.doc_entity || [])
                       .filter((de) => de.entity.id !== entidadeRaiz.id)
                       .sort((a, b) => {
-                        const tipoCompare = a.entity.entity_type.nome.localeCompare(
-                          b.entity.entity_type.nome
-                        );
+                        const tipoCompare = a.entity.entity_type.nome.localeCompare(b.entity.entity_type.nome);
                         if (tipoCompare !== 0) return tipoCompare;
                         return a.entity.nome.localeCompare(b.entity.nome);
                       });
@@ -177,20 +164,14 @@ export function EntityTreeView({
                     const isLastDoc = docIndex === documentos.length - 1;
 
                     return (
-                      <div
-                        key={doc.id}
-                        className={!isLastDoc ? "border-b border-border/50" : ""}
-                      >
+                      <div key={doc.id} className={!isLastDoc ? "border-b border-border/50" : ""}>
                         <DocumentNode
                           documento={doc}
                           pasta={pasta}
                           entityCount={entidadesFilhas.length}
                           hasEntities={entidadesFilhas.length > 0}
                           isExpanded={isDocExpanded}
-                          isSelected={
-                            selectedDocument?.storage_path ===
-                            doc.doc_file?.[0]?.storage_path
-                          }
+                          isSelected={selectedDocument?.storage_path === doc.doc_file?.[0]?.storage_path}
                           onToggle={() => onToggle(docKey)}
                           onSelect={() => {
                             if (doc.doc_file && doc.doc_file.length > 0) {
@@ -210,12 +191,7 @@ export function EntityTreeView({
                             const reg = ee.entity;
 
                             return (
-                              <div
-                                key={entIndex}
-                                className={
-                                  !isLastEnt ? "border-b border-border/30" : ""
-                                }
-                              >
+                              <div key={entIndex} className={!isLastEnt ? "border-b border-border/30" : ""}>
                                 <EntityNode
                                   entity={reg}
                                   pasta={pasta}
