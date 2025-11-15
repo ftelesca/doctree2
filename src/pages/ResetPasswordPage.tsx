@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,18 +16,44 @@ export default function ResetPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [searchParams] = useSearchParams();
+  
   const navigate = useNavigate();
 
   useEffect(() => {
-    const accessToken = searchParams.get("access_token");
-    const refreshToken = searchParams.get("refresh_token");
+    const processHash = async () => {
+      try {
+        const hash = window.location.hash || "";
+        const params = new URLSearchParams(hash.replace(/^#/, ""));
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
 
-    if (!accessToken || !refreshToken) {
-      toast.error("Link de redefinição de senha inválido ou expirado.");
-      navigate("/auth");
-    }
-  }, [searchParams, navigate]);
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
+
+          // Limpa o hash da URL por segurança
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+          return;
+        }
+
+        // Fallback: verificar se já há sessão ativa (Supabase pode ter processado o hash automaticamente)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          toast.error("Link de redefinição de senha inválido ou expirado. Solicite um novo.");
+          navigate("/auth");
+        }
+      } catch (e) {
+        console.error("Erro ao processar link de recuperação:", e);
+        toast.error("Não foi possível validar o link. Solicite um novo.");
+        navigate("/auth");
+      }
+    };
+
+    processHash();
+  }, [navigate]);
 
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
