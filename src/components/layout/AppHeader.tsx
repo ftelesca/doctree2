@@ -1,9 +1,9 @@
-import { Info, FileText, Upload, BarChart3, Shield } from "lucide-react";
+import { Info, FileText, BarChart3, Shield, Calendar } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { NavLink } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Calendar, Tag } from "lucide-react";
+import { BookOpen, Upload, Tag } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ export function AppHeader() {
 
   const menuItems = [
     { title: "Navegador", url: "/navegador", icon: BookOpen },
-    { title: "Editor", url: "/editor", icon: Calendar },
+    { title: "Importador", url: "/upload", icon: Upload },
     { title: "Administrador", url: "/entidades", icon: Tag, adminOnly: true },
   ];
 
