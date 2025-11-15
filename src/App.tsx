@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LastFolderProvider } from "./contexts/LastFolderContext";
@@ -40,6 +40,17 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AuthenticatedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
+
+  // Detect Supabase email link redirects and force password setup/reset flow
+  const params = new URLSearchParams(location.search);
+  const hasAccessToken = params.has("access_token");
+  const linkType = params.get("type");
+  const mustReset = hasAccessToken && (linkType === "signup" || linkType === "recovery" || linkType === "invite");
+
+  if (mustReset) {
+    return <Navigate to={`/reset-password${location.search}`} replace />;
+  }
 
   if (loading) {
     return (
@@ -85,9 +96,7 @@ const App = () => (
               <Route 
                 path="/reset-password" 
                 element={
-                  <AuthenticatedRoute>
-                    <ResetPasswordPage />
-                  </AuthenticatedRoute>
+                  <ResetPasswordPage />
                 } 
               />
               <Route
