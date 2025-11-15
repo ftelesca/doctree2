@@ -402,60 +402,71 @@ export default function Navegador() {
         <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      ) : selectedDocument ? (
-        <div className="min-h-[600px] rounded-lg border">
-          <PdfViewer
-            document={selectedDocument}
-            onClose={() => setSelectedDocument(null)}
-            onDownload={handleDownload}
-          />
-        </div>
       ) : (
-        <div className="min-h-[600px] rounded-lg border overflow-auto p-4">
-          {entidadeRaiz ? (
-            <EntityTreeView
-              entidadeRaiz={entidadeRaiz}
-              pastas={folders}
-              documentosPorPasta={documentosFiltrados}
-              pastaExpandida={pastaExpandida}
-              selectedDocument={selectedDocument}
-              onToggle={(key) =>
-                setPastaExpandida({
-                  ...pastaExpandida,
-                  [key]: !pastaExpandida[key],
-                })
-              }
-              onSelectDocument={setSelectedDocument}
-              onEditDoc={handleEditDoc}
-              onDeleteDoc={handleDeleteDoc}
-              onEditEntity={handleEditEntity}
-              onDeleteEntity={handleDeleteEntity}
-              onSelectEntityRoot={setEntidadeRaiz}
+        <ResizablePanelGroup
+          direction="horizontal"
+          className="min-h-[600px] rounded-lg border"
+        >
+          {/* Painel Esquerdo - Navegação */}
+          <ResizablePanel defaultSize={50}>
+            <div className="h-full overflow-auto p-4">
+              {entidadeRaiz ? (
+                <EntityTreeView
+                  entidadeRaiz={entidadeRaiz}
+                  pastas={folders}
+                  documentosPorPasta={documentosFiltrados}
+                  pastaExpandida={pastaExpandida}
+                  selectedDocument={selectedDocument}
+                  onToggle={(key) =>
+                    setPastaExpandida({
+                      ...pastaExpandida,
+                      [key]: !pastaExpandida[key],
+                    })
+                  }
+                  onSelectDocument={setSelectedDocument}
+                  onEditDoc={handleEditDoc}
+                  onDeleteDoc={handleDeleteDoc}
+                  onEditEntity={handleEditEntity}
+                  onDeleteEntity={handleDeleteEntity}
+                  onSelectEntityRoot={setEntidadeRaiz}
+                />
+              ) : (
+                <FolderTreeView
+                  pastas={folders}
+                  documentosPorPasta={documentosFiltrados}
+                  pastaExpandida={pastaExpandida}
+                  selectedDocument={selectedDocument}
+                  onTogglePasta={handleTogglePasta}
+                  onToggleDoc={(key) =>
+                    setPastaExpandida({
+                      ...pastaExpandida,
+                      [key]: !pastaExpandida[key],
+                    })
+                  }
+                  onSelectDocument={setSelectedDocument}
+                  onEditDoc={handleEditDoc}
+                  onDeleteDoc={handleDeleteDoc}
+                  onEditEntity={handleEditEntity}
+                  onDeleteEntity={handleDeleteEntity}
+                  onSelectEntityRoot={setEntidadeRaiz}
+                  onAnalysis={handleAnalysis}
+                  onShare={handleShare}
+                />
+              )}
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* Painel Direito - PDF */}
+          <ResizablePanel defaultSize={50}>
+            <PdfViewer
+              document={selectedDocument}
+              onClose={() => setSelectedDocument(null)}
+              onDownload={handleDownload}
             />
-          ) : (
-            <FolderTreeView
-              pastas={folders}
-              documentosPorPasta={documentosFiltrados}
-              pastaExpandida={pastaExpandida}
-              selectedDocument={selectedDocument}
-              onTogglePasta={handleTogglePasta}
-              onToggleDoc={(key) =>
-                setPastaExpandida({
-                  ...pastaExpandida,
-                  [key]: !pastaExpandida[key],
-                })
-              }
-              onSelectDocument={setSelectedDocument}
-              onEditDoc={handleEditDoc}
-              onDeleteDoc={handleDeleteDoc}
-              onEditEntity={handleEditEntity}
-              onDeleteEntity={handleDeleteEntity}
-              onSelectEntityRoot={setEntidadeRaiz}
-              onAnalysis={handleAnalysis}
-              onShare={handleShare}
-            />
-          )}
-        </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       )}
 
       {/* Dialogs - Pastas */}

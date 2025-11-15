@@ -168,7 +168,7 @@ export function PdfViewer({ document, onClose, onDownload }: PdfViewerProps) {
           </div>
         ) : pdfUrl ? (
           <iframe
-            src={`${pdfUrl}#pagemode=none`}
+            src={pdfUrl}
             className="w-full h-full border-0"
             title={document.nome_arquivo}
           />
