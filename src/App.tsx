@@ -42,14 +42,16 @@ const AuthenticatedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Detect Supabase email link redirects and force password setup/reset flow
+  // Detect Supabase email link redirects (tokens may be in search or hash)
   const params = new URLSearchParams(location.search);
-  const hasAccessToken = params.has("access_token");
-  const linkType = params.get("type");
-  const mustReset = hasAccessToken && (linkType === "signup" || linkType === "recovery" || linkType === "invite");
+  const hashParams = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : location.hash);
+  const accessToken = params.get("access_token") || hashParams.get("access_token");
+  const linkType = (params.get("type") || hashParams.get("type"));
+  const mustReset = !!accessToken && (linkType === "signup" || linkType === "recovery" || linkType === "invite");
 
   if (mustReset) {
-    return <Navigate to={`/reset-password${location.search}`} replace />;
+    const queryString = params.toString() ? `?${params.toString()}` : (hashParams.toString() ? `?${hashParams.toString()}` : "");
+    return <Navigate to={`/reset-password${queryString}`} replace />;
   }
 
   if (loading) {
