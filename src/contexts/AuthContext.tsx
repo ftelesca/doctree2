@@ -175,10 +175,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
     } catch (error: any) {
-      // Only show non-session related errors
-      if (error?.message !== 'Session not found') {
-        toast.error(error?.message || "Erro ao sair");
-      }
+      // Silently handle session errors, only log severe errors
+      console.error('Logout error:', error);
     } finally {
       // Ensure local cleanup even if the server reports missing session
       await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
@@ -186,7 +184,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       setProfile(null);
 
-      toast.success("Logout realizado com sucesso!");
       navigate("/auth");
     }
   };
