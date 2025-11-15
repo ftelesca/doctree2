@@ -40,34 +40,20 @@ export function PendingSharesDialog() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from("folder_share")
-        .select(`
-          folder_id,
-          user_guest_id,
-          usuario_criador_id,
-          folder:folder (descricao)
-        `)
-        .eq("user_guest_id", user.id)
-        .is("confirmed", null)
-        .limit(1)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("get_pending_share_details", {
+        _user_id: user.id,
+      });
 
       if (error) throw error;
 
-      if (data) {
-        // Buscar dados do dono
-        const { data: ownerData } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", data.usuario_criador_id)
-          .single();
-
+      if (data && data.length > 0) {
+        const shareDetails = data[0];
         setCurrentPending({
-          ...data,
-          folder: Array.isArray(data.folder) ? data.folder[0] : data.folder,
-          owner: ownerData || { full_name: null }
-        } as any as PendingShare);
+          folder_id: shareDetails.folder_id,
+          user_guest_id: user.id,
+          folder: { descricao: shareDetails.folder_name },
+          owner: { full_name: shareDetails.owner_name },
+        });
       }
     } catch (error) {
       console.error("Erro ao verificar compartilhamentos pendentes:", error);
@@ -110,8 +96,8 @@ export function PendingSharesDialog() {
 
   if (!currentPending) return null;
 
-  const ownerName = currentPending.owner?.full_name || "Um usuário";
-  const folderName = currentPending.folder?.descricao || "uma pasta";
+  const ownerName = currentPending.owner?.full_name;
+  const folderName = currentPending.folder?.descricao;
 
   return (
     <Dialog open={!!currentPending} onOpenChange={() => {}}>
