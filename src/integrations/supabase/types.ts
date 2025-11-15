@@ -316,28 +316,28 @@ export type Database = {
       }
       folder_share: {
         Row: {
-          folder_id: string
-          user_guest_id: string | null
-          guest_email: string | null
-          usuario_criador_id: string
           confirmed: boolean | null
-          created_at: string | null
+          created_at: string
+          folder_id: string
+          guest_email: string
+          user_guest_id: string | null
+          usuario_criador_id: string
         }
         Insert: {
-          folder_id: string
-          user_guest_id?: string | null
-          guest_email?: string | null
-          usuario_criador_id: string
           confirmed?: boolean | null
-          created_at?: string | null
+          created_at?: string
+          folder_id: string
+          guest_email: string
+          user_guest_id?: string | null
+          usuario_criador_id: string
         }
         Update: {
-          folder_id?: string
-          user_guest_id?: string | null
-          guest_email?: string | null
-          usuario_criador_id?: string
           confirmed?: boolean | null
-          created_at?: string | null
+          created_at?: string
+          folder_id?: string
+          guest_email?: string
+          user_guest_id?: string | null
+          usuario_criador_id?: string
         }
         Relationships: [
           {
@@ -360,7 +360,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       profiles: {
@@ -416,6 +416,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_email_by_id: { Args: { user_uuid: string }; Returns: string }
+      get_user_id_by_email: { Args: { user_email: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
